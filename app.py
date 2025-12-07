@@ -443,6 +443,127 @@ if run_button and uploaded_files:
 elif run_button and not uploaded_files:
     st.warning("画像をアップロードしてください。")
 
+# --- 動画生成 (Beta) ---
+st.markdown("---")
+st.subheader("4. 動画生成 (Beta)")
+st.info("生成した画像や手持ちの画像を元に、動画を生成します (Kling 2.6)。")
+
+col_video_input, col_video_result = st.columns([1, 1])
+
+with col_video_input:
+    video_source_file = st.file_uploader("動画にする画像を選択", type=["jpg", "png", "jpeg"], key="video_uploader")
+    video_prompt = st.text_area("動画のプロンプト (どのような動きにするか)", height=100, max_chars=1000, key="video_prompt")
+    video_duration = st.selectbox("動画の長さ", ["5s", "10s"], index=0, key="video_duration")
+    video_sound = st.checkbox("効果音・BGMを生成する (Beta)", value=False, key="video_sound")
+    
+    generate_video_btn = st.button("動画を生成する", type="primary", key="video_btn")
+
+if generate_video_btn and video_source_file:
+    with col_video_result:
+        st.subheader("生成結果")
+        try:
+            with st.spinner('画像をアップロードして動画生成を開始中...'):
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {API_KEY}"
+                }
+
+                # 1. 画像アップロード
+                image = Image.open(video_source_file)
+                st.image(image, caption="元画像", use_container_width=True)
+                
+                # リサイズ (Klingの制限に合わせて調整、ここでは他と同じく1024に抑える)
+                image.thumbnail((1024, 1024))
+                base64_image = image_to_base64(image)
+                
+                img_url = upload_image_to_kieai(headers, base64_image)
+                if not img_url:
+                    st.error("画像のアップロードに失敗しました。")
+                    st.stop()
+                
+                # 2. Webhookトークン取得
+                wh_uuid = get_webhook_token()
+                if not wh_uuid:
+                    st.error("Webhookトークンの取得に失敗しました。")
+                    st.stop()
+                callback_url = f"https://webhook.site/{wh_uuid}"
+
+                # 3. ペイロード作成
+                duration_val = video_duration.replace("s", "")
+                payload = {
+                    "model": "kling-2.6/image-to-video",
+                    "callBackUrl": callback_url,
+                    "input": {
+                        "prompt": video_prompt,
+                        "image_urls": [img_url],
+                        "sound": video_sound,
+                        "duration": duration_val
+                    }
+                }
+                
+                # デバッグ
+                with st.expander("デバッグ情報 (JSON Payload)"):
+                    st.json(payload)
+
+                # 4. API送信
+                url = "https://api.kie.ai/api/v1/jobs/createTask"
+                response = requests.post(url, headers=headers, data=json.dumps(payload))
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("code") == 200 and "data" in result:
+                        task_id = result["data"]["taskId"]
+                        st.info(f"動画生成タスクが開始されました。ID: {task_id}")
+                        
+                        # ポーリング
+                        poll_wh_url = f"https://webhook.site/token/{wh_uuid}/requests"
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        for i in range(60): # 最大300秒待機 (5秒間隔)
+                            status_text.text(f"生成中... ({i*5}秒経過)")
+                            progress_bar.progress(min(i * 2, 95))
+                            
+                            try:
+                                wh_res = requests.get(poll_wh_url)
+                                if wh_res.status_code == 200:
+                                    requests_data = wh_res.json()
+                                    if requests_data["data"]:
+                                        latest_req = requests_data["data"][0]
+                                        if latest_req["method"] == "POST":
+                                            content = json.loads(latest_req["content"])
+                                            
+                                            if content.get("data", {}).get("state") == "success":
+                                                progress_bar.progress(100)
+                                                status_text.text("生成完了！")
+                                                
+                                                result_json_str = content["data"].get("resultJson")
+                                                if result_json_str:
+                                                    result_json = json.loads(result_json_str)
+                                                    result_urls = result_json.get("resultUrls", [])
+                                                    
+                                                    for res_url in result_urls:
+                                                        st.video(res_url)
+                                                        st.success("動画の生成に成功しました！")
+                                                return # 完了
+                                            
+                                            elif content.get("data", {}).get("state") == "fail":
+                                                st.error(f"生成失敗: {content['data'].get('failMsg')}")
+                                                return
+                            except Exception as e:
+                                pass # ポーリングエラーは無視して継続
+                            
+                            time.sleep(5)
+                        
+                        st.warning("タイムアウトしました。結果はWebhook URLを確認してください。")
+                    else:
+                        st.error(f"タスク開始エラー: {result.get('message')}")
+                else:
+                    st.error(f"APIエラー: {response.status_code} - {response.text}")
+
+        except Exception as e:
+            st.error(f"予期せぬエラーが発生しました: {e}")
+
 # --- フッター (Credits) ---
 st.markdown("""
 <div style="
