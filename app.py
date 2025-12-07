@@ -278,11 +278,16 @@ if run_button and uploaded_files:
                         }
                     }
                 elif engine == "z-image":
+                    # Z-Image has a max prompt length of 1000 characters
+                    truncated_prompt = prompt[:1000]
+                    if len(prompt) > 1000:
+                        st.warning("⚠️ Z-Imageの制限により、プロンプトが1000文字に短縮されました。")
+                    
                     payload = {
                         "model": "z-image",
                         "callBackUrl": callback_url,
                         "input": {
-                            "prompt": prompt,
+                            "prompt": truncated_prompt,
                             "aspect_ratio": aspect_ratio
                         }
                     }
