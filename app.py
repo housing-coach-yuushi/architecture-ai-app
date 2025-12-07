@@ -545,11 +545,11 @@ if generate_video_btn and video_source_file:
                                                     for res_url in result_urls:
                                                         st.video(res_url)
                                                         st.success("動画の生成に成功しました！")
-                                                return # 完了
+                                                st.stop() # 完了
                                             
                                             elif content.get("data", {}).get("state") == "fail":
                                                 st.error(f"生成失敗: {content['data'].get('failMsg')}")
-                                                return
+                                                st.stop()
                             except Exception as e:
                                 pass # ポーリングエラーは無視して継続
                             
