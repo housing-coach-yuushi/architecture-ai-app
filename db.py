@@ -49,7 +49,17 @@ def init_db(sheet_name="gallery_data"):
                     sh.share(None, perm_type='anyone', role='reader')
                     st.toast("新しいデータベース(スプレッドシート)を作成しました。")
                 except Exception as e:
-                    st.error(f"スプレッドシートの作成に失敗しました: {e}")
+                    if "quota" in str(e).lower():
+                        st.error("⚠️ Google Driveの容量制限により、自動作成に失敗しました。")
+                        st.info(f"""
+                        **手動での作成をお願いします:**
+                        1. Googleスプレッドシートで新しいシートを作成し、名前を `architecture-app-db` にしてください。
+                        2. そのシートを以下のメールアドレスに「編集者」として共有してください。
+                        
+                        `{client.auth.service_account_email}`
+                        """)
+                    else:
+                        st.error(f"スプレッドシートの作成に失敗しました: {e}")
                     return None
             
         # ワークシート取得 (なければ作成)
