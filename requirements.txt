@@ -1,3 +1,5 @@
 streamlit
 requests
 Pillow
+gspread
+oauth2client

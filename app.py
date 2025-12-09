@@ -5,6 +5,7 @@ import base64
 import time
 from PIL import Image
 import io
+import db  # Import database module
 
 # --- 設定 ---
 # APIキーは st.secrets から取得 (ローカルでは .streamlit/secrets.toml, クラウドではSecrets管理画面で設定)
@@ -130,7 +131,6 @@ with col_input:
     uploaded_files = st.file_uploader("下絵となる画像をアップロードしてください (複数可)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
     
     # プロンプト設定
-    # プロンプト設定
     st.subheader("2. 設定")
     default_prompt = """Create a photorealistic version of the input image.
 
@@ -171,7 +171,6 @@ Let the light emphasize the geometry and edges of the architecture."""
         height=300
     )
     
-    # 重要なパラメータ
     # パラメータ設定
     col1, col2 = st.columns(2)
     with col1:
@@ -181,31 +180,14 @@ Let the light emphasize the geometry and edges of the architecture."""
     
     aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
     
-    # エンジン選択
-    engine_display = st.selectbox(
-        "生成エンジン", 
-        ["nano-banana-pro", "flux-2/flex-image-to-image", "Seedream 4.5", "Z-Image"], 
-        index=2
-    )
-    
-    # 表示名からモデルIDへのマッピング
-    if "nano-banana" in engine_display:
-        engine = "nano-banana-pro"
-    elif "flux-2/flex" in engine_display:
-        engine = "flux-2/flex-image-to-image"
-    elif "Seedream" in engine_display:
-        engine = "seedream/4.5-text-to-image"
-    elif "Z-Image" in engine_display:
-        engine = "z-image"
-    else:
-        engine = "nano-banana-pro" # Default fallback
+    st.info("ℹ️ 'Nano Banana Pro' と 'Flux 2 Flex' の2つのエンジンで同時に生成します。")
 
     run_button = st.button("パースを生成する", type="primary")
 
 # --- 実行処理 ---
 if run_button and uploaded_files:
     with col_result:
-        st.subheader("3. 結果")
+        st.subheader("3. 結果ギャラリー")
         
         try:
             with st.spinner('画像を処理してAPIに送信中...'):
@@ -217,22 +199,14 @@ if run_button and uploaded_files:
                 # 1. 画像の前処理 & アップロード (複数対応)
                 input_urls = []
                 
-                # Seedream/Z-Imageはtext-to-imageモデルだが、アプリのフロー上画像アップロードがある。
-                # 現状のドキュメントにはimage inputがないが、他のモデルと同様にアップロード処理は残しておく
-                
                 for i, uploaded_file in enumerate(uploaded_files):
                     image = Image.open(uploaded_file)
-                    
-                    # デバッグ: 画像表示
-                    with st.expander(f"送信画像を確認 ({i+1})"):
-                        st.image(image, caption=f"Image {i+1}", use_container_width=True)
                     
                     # リサイズ
                     image.thumbnail((1024, 1024)) 
                     base64_image = image_to_base64(image)
                     
                     # アップロード (共通)
-                    st.text(f"画像をアップロード中 ({i+1})...")
                     img_url = upload_image_to_kieai(headers, base64_image)
                     if img_url:
                         input_urls.append(img_url)
@@ -244,8 +218,6 @@ if run_button and uploaded_files:
                      st.error("画像が正しくアップロードされませんでした。")
                      st.stop()
                 
-                st.success(f"{len(input_urls)} 枚の画像をアップロードしました。")
-
                 # B. Webhookトークン取得
                 wh_uuid = get_webhook_token()
                 if not wh_uuid:
@@ -253,189 +225,173 @@ if run_button and uploaded_files:
                     st.stop()
                 callback_url = f"https://webhook.site/{wh_uuid}"
                 
-                # C. ペイロード作成 (エンジン別)
+                # C. タスク作成 (2つのエンジン)
                 url = "https://api.kie.ai/api/v1/jobs/createTask"
                 
-                if engine == "nano-banana-pro":
-                    payload = {
-                        "model": "nano-banana-pro",
-                        "callBackUrl": callback_url,
-                        "input": {
-                            "prompt": prompt,
-                            "image_input": input_urls, # リストを渡す
-                            "aspect_ratio": aspect_ratio,
-                            "output_format": "png"
-                        }
-                    }
-                elif engine == "seedream/4.5-text-to-image":
-                    payload = {
-                        "model": "seedream/4.5-text-to-image",
-                        "callBackUrl": callback_url,
-                        "input": {
-                            "prompt": prompt,
-                            "aspect_ratio": aspect_ratio,
-                            "quality": "high" # Default to high
-                        }
-                    }
-                elif engine == "z-image":
-                    # Z-Image has a max prompt length of 1000 characters
-                    truncated_prompt = prompt[:1000]
-                    if len(prompt) > 1000:
-                        st.warning("⚠️ Z-Imageの制限により、プロンプトが1000文字に短縮されました。")
-                    
-                    payload = {
-                        "model": "z-image",
-                        "callBackUrl": callback_url,
-                        "input": {
-                            "prompt": truncated_prompt,
-                            "aspect_ratio": aspect_ratio
-                        }
-                    }
-                else: # Flux 2 Flex
-                    payload = {
-                        "model": engine,
-                        "callBackUrl": callback_url,
-                        "input": {
-                            "input_urls": input_urls, # リストを渡す
-                            "prompt": prompt,
-                            "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
-                            "resolution": resolution,
-                            "strength": strength
-                        }
-                    }
-                        
-
-                # デバッグ: ペイロード確認
-                with st.expander("デバッグ情報 (JSON Payload)"):
-                    debug_payload = payload.copy()
-                    if "image" in debug_payload:
-                        debug_payload["image"] = debug_payload["image"][:50] + "..."
-                    st.json(debug_payload)
-
-                # 3. API送信
-                response = requests.post(url, headers=headers, data=json.dumps(payload))
+                tasks = {} # {task_id: {"engine": name, "status": "pending", "result_url": None}}
                 
-                # 4. レスポンス処理
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    if result.get("code") == 200 and "data" in result:
-                        task_id = result["data"]["taskId"]
-                        st.info(f"タスクが開始されました。ID: {task_id}")
-                        
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        # ポーリング処理
-                        if engine in ["nano-banana-pro", "flux-2/flex-image-to-image", "seedream/4.5-text-to-image", "z-image"]:
-                            # Webhookをポーリング
-                            poll_wh_url = f"https://webhook.site/token/{wh_uuid}/requests"
-                            
-                            st.write(f"Webhook モニター: [リンク](https://webhook.site/#!/{wh_uuid})")
-                            
-                            # 手動入力フォールバック
-                            with st.expander("⚠️ 結果が反映されない場合 (手動入力)"):
-                                st.markdown("Webhook Monitorに届いたJSON全体をここに貼り付けてください。")
-                                manual_json = st.text_area("コールバック JSON", height=150)
-                                if st.button("JSONから結果を表示"):
-                                    try:
-                                        body = json.loads(manual_json)
-                                        data = body.get("data", {})
-                                        
-                                        # resultUrlsが直接ある場合 (一部のエンジン)
-                                        if "resultUrls" in data and isinstance(data["resultUrls"], list):
-                                            result_urls = data["resultUrls"]
-                                            if result_urls:
-                                                cols = st.columns(2)
-                                                for idx, url in enumerate(result_urls):
-                                                    with cols[idx % 2]:
-                                                        st.image(url, caption=f"生成結果 {idx+1}")
-                                                st.success("生成完了！")
-                                                progress_bar.progress(1.0)
-                                        
-                                        # resultJson文字列がある場合 (標準)
-                                        elif "resultJson" in data:
-                                            res_json_str = data["resultJson"]
-                                            if res_json_str:
-                                                res_json = json.loads(res_json_str)
-                                                if "resultUrls" in res_json and res_json["resultUrls"]:
-                                                    image_url = res_json["resultUrls"][0]
-                                                    st.image(image_url, caption="生成結果 (手動読込)")
-                                                    st.success("生成完了！")
-                                                    progress_bar.progress(1.0)
-                                    except Exception as e:
-                                        st.error(f"JSON解析エラー: {e}")
+                # Engine 1: Nano Banana Pro
+                payload_nano = {
+                    "model": "nano-banana-pro",
+                    "callBackUrl": callback_url,
+                    "input": {
+                        "prompt": prompt,
+                        "image_input": input_urls,
+                        "aspect_ratio": aspect_ratio,
+                        "output_format": "png"
+                    }
+                }
+                
+                # Engine 2: Flux 2 Flex
+                payload_flux = {
+                    "model": "flux-2/flex-image-to-image",
+                    "callBackUrl": callback_url,
+                    "input": {
+                        "input_urls": input_urls,
+                        "prompt": prompt,
+                        "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
+                        "resolution": resolution,
+                        "strength": strength
+                    }
+                }
 
-                            with st.expander("Webhook ポーリングログ"):
-                                log_container = st.empty()
-                                logs = []
-                                logs.append(f"タスクIDを検索中: {task_id}")
-
-                            for i in range(150): # 最大300秒待機 (2s * 150)
-                                try:
-                                    wh_reqs = requests.get(poll_wh_url, timeout=10)
-                                    if wh_reqs.status_code == 200:
-                                        reqs_data = wh_reqs.json()
-                                        data_list = reqs_data.get("data", [])
-                                        
-                                        found = False
-                                        if data_list:
-                                            for req in data_list:
-                                                content = req.get("content")
-                                                if content:
-                                                    try:
-                                                        body = json.loads(content)
-                                                        received_task_id = body.get("data", {}).get("taskId")
-                                                        
-                                                        # ログに記録（最新のものをいくつか）
-                                                        if len(logs) < 10:
-                                                            logs.append(f"タスクIDのリクエストを発見: {received_task_id}")
-                                                        
-                                                        if received_task_id == task_id:
-                                                            found = True
-                                                            
-                                                            # 共通の判定 (stateがある)
-                                                            state = body.get("data", {}).get("state")
-                                                            status_text.text(f"生成中... (状態: {state})")
-                                                            
-                                                            logs.append(f"一致! 状態: {state}")
-                                                            log_container.write(logs)
-                                                            
-                                                            if state == "success":
-                                                                res_json_str = body["data"].get("resultJson")
-                                                                if res_json_str:
-                                                                    res_json = json.loads(res_json_str)
-                                                                    if "resultUrls" in res_json and res_json["resultUrls"]:
-                                                                        image_url = res_json["resultUrls"][0]
-                                                                        st.image(image_url, caption="生成結果")
-                                                                        st.success("生成完了！")
-                                                                        progress_bar.progress(1.0)
-                                                                        break
-                                                            elif state == "fail":
-                                                                st.error(f"生成に失敗しました: {body.get('msg')}")
-                                                                break
-                                                    except:
-                                                        pass
-                                        if found:
-                                            break
-                                            
-                                    status_text.text(f"生成中... ({i*2}秒経過)")
-                                    log_container.write(logs)
-                                    time.sleep(2)
-                                except Exception as e:
-                                    status_text.text(f"待機中... ({e})")
-                                    logs.append(f"エラー: {e}")
-                                    log_container.write(logs)
-                                    time.sleep(2)
+                # Send Requests
+                for engine_name, payload in [("Nano Banana Pro", payload_nano), ("Flux 2 Flex", payload_flux)]:
+                    try:
+                        res = requests.post(url, headers=headers, data=json.dumps(payload))
+                        if res.status_code == 200:
+                            r_data = res.json()
+                            if r_data.get("code") == 200:
+                                tid = r_data["data"]["taskId"]
+                                tasks[tid] = {"engine": engine_name, "status": "pending", "result_url": None}
+                                st.toast(f"{engine_name} タスク開始: {tid}")
                             else:
-                                st.error("タイムアウトしました（300秒）。Webhook Monitorリンクから結果が届いているか確認してください。")
-                    else:
-                        st.error("APIエラー: " + result.get("msg", "不明なエラー"))
-                        st.json(result)
+                                st.error(f"{engine_name} 開始エラー: {r_data.get('msg')}")
+                        else:
+                            st.error(f"{engine_name} APIエラー: {res.status_code}")
+                    except Exception as e:
+                        st.error(f"{engine_name} 送信エラー: {e}")
 
-                else:
-                    st.error(f"APIエラーが発生しました (Status: {response.status_code})")
-                    st.text(response.text)
+                if not tasks:
+                    st.stop()
+
+                # D. ポーリング & ギャラリー表示
+                st.markdown("### 生成中...")
+                progress_bar = st.progress(0)
+                gallery_placeholder = st.empty()
+                
+                poll_wh_url = f"https://webhook.site/token/{wh_uuid}/requests"
+                
+                # ポーリングループ
+                start_time = time.time()
+                while True:
+                    # タイムアウト判定 (300秒)
+                    if time.time() - start_time > 300:
+                        st.error("タイムアウトしました。")
+                        break
+                        
+                    # 全タスク完了判定
+                    pending_tasks = [tid for tid, info in tasks.items() if info["status"] == "pending"]
+                    if not pending_tasks:
+                        progress_bar.progress(1.0)
+                        st.success("全タスク完了！")
+                        break
+                    
+                    # 進捗バー更新 (簡易)
+                    elapsed = time.time() - start_time
+                    progress_bar.progress(min(elapsed / 60, 0.95)) # 60秒で95%まで
+                    
+                    try:
+                        wh_reqs = requests.get(poll_wh_url, timeout=10)
+                        if wh_reqs.status_code == 200:
+                            reqs_data = wh_reqs.json()
+                            data_list = reqs_data.get("data", [])
+                            
+                            for req in data_list:
+                                content = req.get("content")
+                                if content:
+                                    try:
+                                        body = json.loads(content)
+                                        data_body = body.get("data", {})
+                                        rec_tid = data_body.get("taskId")
+                                        
+                                        if rec_tid in tasks and tasks[rec_tid]["status"] == "pending":
+                                            state = data_body.get("state")
+                                            
+                                            if state == "success":
+                                                # 結果URL取得
+                                                res_url = None
+                                                if "resultUrls" in data_body and data_body["resultUrls"]:
+                                                    res_url = data_body["resultUrls"][0]
+                                                elif "resultJson" in data_body:
+                                                    rj = json.loads(data_body["resultJson"])
+                                                    if "resultUrls" in rj and rj["resultUrls"]:
+                                                        res_url = rj["resultUrls"][0]
+                                                
+                                                if res_url:
+                                                    tasks[rec_tid]["status"] = "success"
+                                                    tasks[rec_tid]["result_url"] = res_url
+                                                    st.toast(f"{tasks[rec_tid]['engine']} 完了！")
+                                                    
+                                                    # DBに保存
+                                                    db.save_result(res_url, prompt, tasks[rec_tid]['engine'])
+                                            
+                                            elif state == "fail":
+                                                tasks[rec_tid]["status"] = "failed"
+                                                st.error(f"{tasks[rec_tid]['engine']} 失敗: {data_body.get('msg')}")
+                                    except:
+                                        pass
+                    except Exception:
+                        pass
+                    
+                    # ギャラリー更新 (Grid表示)
+                    with gallery_placeholder.container():
+                        # CSS Grid for Gallery
+                        st.markdown("""
+                        <style>
+                        .gallery-container {
+                            display: grid;
+                            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                            gap: 1rem;
+                            padding: 1rem 0;
+                        }
+                        .gallery-item {
+                            background: white;
+                            padding: 10px;
+                            border-radius: 8px;
+                            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                            text-align: center;
+                        }
+                        .gallery-item img {
+                            width: 100%;
+                            border-radius: 4px;
+                            margin-bottom: 8px;
+                        }
+                        .gallery-label {
+                            font-weight: bold;
+                            color: #555;
+                            font-size: 0.9rem;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        cols = st.columns(2) # 2列で表示
+                        
+                        # 表示順序: Nano, Flux
+                        task_items = list(tasks.values())
+                        
+                        for idx, task_info in enumerate(task_items):
+                            with cols[idx % 2]:
+                                if task_info["result_url"]:
+                                    st.image(task_info["result_url"], use_container_width=True)
+                                    st.markdown(f"**{task_info['engine']}**")
+                                    # ダウンロードボタンなど追加可能
+                                elif task_info["status"] == "failed":
+                                    st.error(f"{task_info['engine']}: 生成失敗")
+                                else:
+                                    st.info(f"{task_info['engine']}: 生成中...")
+
+                    time.sleep(3)
 
         except Exception as e:
             st.error(f"システムエラー: {e}")
@@ -443,126 +399,51 @@ if run_button and uploaded_files:
 elif run_button and not uploaded_files:
     st.warning("画像をアップロードしてください。")
 
-# --- 動画生成 (Beta) ---
+# --- Community Gallery ---
 st.markdown("---")
-st.subheader("4. 動画生成 (Beta)")
-st.info("生成した画像や手持ちの画像を元に、動画を生成します (Kling 2.6)。")
+st.subheader("🌐 コミュニティギャラリー")
 
-col_video_input, col_video_result = st.columns([1, 1])
+# DB接続チェック
+if not db.get_connection():
+    st.warning("⚠️ ギャラリー機能を使用するには、Google Cloudの設定が必要です。")
+    with st.expander("設定方法を見る"):
+        st.markdown("""
+        1. Google Cloud Consoleでプロジェクトを作成し、Sheets APIを有効化。
+        2. サービスアカウントを作成し、JSONキーを取得。
+        3. `.streamlit/secrets.toml` に `[gcp_service_account]` セクションを追加してJSONの内容を貼り付けてください。
+        """)
+else:
+    st.markdown("他のユーザーが生成したパース一覧 (最新50件)")
 
-with col_video_input:
-    video_source_file = st.file_uploader("動画にする画像を選択", type=["jpg", "png", "jpeg"], key="video_uploader")
-    video_prompt = st.text_area("動画のプロンプト (どのような動きにするか)", height=100, max_chars=1000, key="video_prompt")
-    video_duration = st.selectbox("動画の長さ", ["5s", "10s"], index=0, key="video_duration")
-    video_sound = st.checkbox("効果音・BGMを生成する (Beta)", value=False, key="video_sound")
-    
-    generate_video_btn = st.button("動画を生成する", type="primary", key="video_btn")
+    # DBから取得
+    recent_results = db.get_recent_results(limit=50)
 
-if generate_video_btn and video_source_file:
-    with col_video_result:
-        st.subheader("生成結果")
-        try:
-            with st.spinner('画像をアップロードして動画生成を開始中...'):
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {API_KEY}"
-                }
+    if recent_results:
+        # CSS Grid for Gallery (Reusable)
+        st.markdown("""
+        <style>
+        .community-gallery-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Streamlitのcolumnsを使ってグリッド風に表示 (4列)
+        cols = st.columns(4)
+        for idx, record in enumerate(recent_results):
+            with cols[idx % 4]:
+                try:
+                    st.image(record['image_url'], use_container_width=True)
+                    st.caption(f"{record['engine']} | {record['timestamp']}")
+                    with st.expander("プロンプト"):
+                        st.text(record['prompt'])
+                except:
+                    pass
+    else:
+        st.info("まだ生成結果がありません。")
 
-                # 1. 画像アップロード
-                image = Image.open(video_source_file)
-                st.image(image, caption="元画像", use_container_width=True)
-                
-                # リサイズ (Klingの制限に合わせて調整、ここでは他と同じく1024に抑える)
-                image.thumbnail((1024, 1024))
-                base64_image = image_to_base64(image)
-                
-                img_url = upload_image_to_kieai(headers, base64_image)
-                if not img_url:
-                    st.error("画像のアップロードに失敗しました。")
-                    st.stop()
-                
-                # 2. Webhookトークン取得
-                wh_uuid = get_webhook_token()
-                if not wh_uuid:
-                    st.error("Webhookトークンの取得に失敗しました。")
-                    st.stop()
-                callback_url = f"https://webhook.site/{wh_uuid}"
-
-                # 3. ペイロード作成
-                duration_val = video_duration.replace("s", "")
-                payload = {
-                    "model": "kling-2.6/image-to-video",
-                    "callBackUrl": callback_url,
-                    "input": {
-                        "prompt": video_prompt,
-                        "image_urls": [img_url],
-                        "sound": video_sound,
-                        "duration": duration_val
-                    }
-                }
-                
-                # デバッグ
-                with st.expander("デバッグ情報 (JSON Payload)"):
-                    st.json(payload)
-
-                # 4. API送信
-                url = "https://api.kie.ai/api/v1/jobs/createTask"
-                response = requests.post(url, headers=headers, data=json.dumps(payload))
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get("code") == 200 and "data" in result:
-                        task_id = result["data"]["taskId"]
-                        st.info(f"動画生成タスクが開始されました。ID: {task_id}")
-                        
-                        # ポーリング
-                        poll_wh_url = f"https://webhook.site/token/{wh_uuid}/requests"
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        for i in range(60): # 最大300秒待機 (5秒間隔)
-                            status_text.text(f"生成中... ({i*5}秒経過)")
-                            progress_bar.progress(min(i * 2, 95))
-                            
-                            try:
-                                wh_res = requests.get(poll_wh_url)
-                                if wh_res.status_code == 200:
-                                    requests_data = wh_res.json()
-                                    if requests_data["data"]:
-                                        latest_req = requests_data["data"][0]
-                                        if latest_req["method"] == "POST":
-                                            content = json.loads(latest_req["content"])
-                                            
-                                            if content.get("data", {}).get("state") == "success":
-                                                progress_bar.progress(100)
-                                                status_text.text("生成完了！")
-                                                
-                                                result_json_str = content["data"].get("resultJson")
-                                                if result_json_str:
-                                                    result_json = json.loads(result_json_str)
-                                                    result_urls = result_json.get("resultUrls", [])
-                                                    
-                                                    for res_url in result_urls:
-                                                        st.video(res_url)
-                                                        st.success("動画の生成に成功しました！")
-                                                st.stop() # 完了
-                                            
-                                            elif content.get("data", {}).get("state") == "fail":
-                                                st.error(f"生成失敗: {content['data'].get('failMsg')}")
-                                                st.stop()
-                            except Exception as e:
-                                pass # ポーリングエラーは無視して継続
-                            
-                            time.sleep(5)
-                        
-                        st.warning("タイムアウトしました。結果はWebhook URLを確認してください。")
-                    else:
-                        st.error(f"タスク開始エラー: {result.get('message')}")
-                else:
-                    st.error(f"APIエラー: {response.status_code} - {response.text}")
-
-        except Exception as e:
-            st.error(f"予期せぬエラーが発生しました: {e}")
 
 # --- フッター (Credits) ---
 st.markdown("""
