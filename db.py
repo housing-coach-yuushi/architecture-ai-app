@@ -32,10 +32,25 @@ def init_db(sheet_name="gallery_data"):
         # ここでは既存のシート "architecture-app-db" を想定、または secrets で指定
         sheet_key = st.secrets.get("SHEET_KEY") # シートIDがあれば確実
         if sheet_key:
-            sh = client.open_by_key(sheet_key)
+            try:
+                sh = client.open_by_key(sheet_key)
+            except:
+                st.warning(f"指定されたシートキー {sheet_key} が見つかりません。")
+                return None
         else:
             # 名前で検索 (ユニークな名前推奨)
-            sh = client.open("architecture-app-db")
+            try:
+                sh = client.open("architecture-app-db")
+            except gspread.SpreadsheetNotFound:
+                # シートがない場合は作成する (サービスアカウントのドライブに作成される)
+                try:
+                    sh = client.create("architecture-app-db")
+                    # 誰でも閲覧可能にする（オプション: 必要に応じて変更）
+                    sh.share(None, perm_type='anyone', role='reader')
+                    st.toast("新しいデータベース(スプレッドシート)を作成しました。")
+                except Exception as e:
+                    st.error(f"スプレッドシートの作成に失敗しました: {e}")
+                    return None
             
         # ワークシート取得 (なければ作成)
         try:
