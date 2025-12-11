@@ -3,3 +3,5 @@ requests
 Pillow
 gspread
 oauth2client
+google-generativeai
+google-api-python-client

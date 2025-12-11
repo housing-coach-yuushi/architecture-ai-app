@@ -68,7 +68,10 @@ def init_db(sheet_name="gallery_data"):
         except:
             worksheet = sh.add_worksheet(title=sheet_name, rows=1000, cols=10)
             # ヘッダー作成
-            worksheet.append_row(["timestamp", "image_url", "prompt", "engine", "user_id"])
+            if sheet_name == "gallery_data":
+                worksheet.append_row(["timestamp", "image_url", "prompt", "engine", "user_id"])
+            elif sheet_name == "categorized_images":
+                worksheet.append_row(["timestamp", "file_id", "image_url", "category", "description", "source_folder_id"])
             
         return worksheet
     except Exception as e:
@@ -77,7 +80,7 @@ def init_db(sheet_name="gallery_data"):
 
 def save_result(image_url, prompt, engine, user_id="anonymous"):
     """生成結果をDB(Sheet)に保存"""
-    worksheet = init_db()
+    worksheet = init_db("gallery_data")
     if worksheet:
         try:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -90,7 +93,7 @@ def save_result(image_url, prompt, engine, user_id="anonymous"):
 
 def get_recent_results(limit=50):
     """最新の生成結果を取得"""
-    worksheet = init_db()
+    worksheet = init_db("gallery_data")
     if worksheet:
         try:
             # 全データを取得 (行数が多いと遅くなるので注意。本番ではAPIで範囲指定推奨)
@@ -100,5 +103,46 @@ def get_recent_results(limit=50):
             return sorted_records[:limit]
         except Exception as e:
             # st.error(f"Fetch error: {e}")
+            return []
+    return []
+
+def save_categorized_image(file_id, image_url, category, description, source_folder_id):
+    """カテゴリ分けされた画像をDBに保存"""
+    worksheet = init_db("categorized_images")
+    if worksheet:
+        try:
+            # 重複チェック (簡易)
+            # 全件取得してfile_idがあるか確認するのは非効率だが、小規模ならOK
+            # 本来はDB側でユニーク制約をかけたいが、Spreadsheetなのでコードでチェック
+            try:
+                cell = worksheet.find(file_id)
+                if cell:
+                    return True # 既に存在するのでスキップ
+            except:
+                pass # 見つからない場合は続行
+
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            worksheet.append_row([timestamp, file_id, image_url, category, description, source_folder_id])
+            return True
+        except Exception as e:
+            st.error(f"Save categorized image error: {e}")
+            return False
+    return False
+
+def get_categorized_images(category=None, limit=100):
+    """カテゴリ分けされた画像を取得"""
+    worksheet = init_db("categorized_images")
+    if worksheet:
+        try:
+            all_records = worksheet.get_all_records()
+            if category and category != "All":
+                filtered_records = [r for r in all_records if r.get('category') == category]
+            else:
+                filtered_records = all_records
+            
+            # 新しい順
+            sorted_records = sorted(filtered_records, key=lambda x: x['timestamp'], reverse=True)
+            return sorted_records[:limit]
+        except Exception as e:
             return []
     return []
