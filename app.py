@@ -6,7 +6,7 @@ import time
 from PIL import Image
 import io
 import db  # Import database module
-import drive_utils # Import drive utils
+
 import google.generativeai as genai
 
 # --- 設定 ---
@@ -205,7 +205,7 @@ st.markdown('<div class="main-header">ishitomo-home AI パース <span style="fo
 st.markdown('<div class="sub-header">手書きスケッチや簡易モデルから、フォトリアルな建築パースを生成します。</div>', unsafe_allow_html=True)
 
 # --- タブの作成 ---
-tab1, tab2 = st.tabs(["🏠 AIパース生成", "📂 ギャラリー & Drive"])
+tab1, tab2 = st.tabs(["🏠 AIパース生成", "🎥 動画生成"])
 
 # ==========================================
 # Tab 1: AIパース生成
@@ -264,11 +264,15 @@ Let the light emphasize the geometry and edges of the architecture."""
         with col1:
             strength = st.slider("プロンプトの影響度 (Strength)", 0.0, 1.0, 0.55, help="0に近いほど元画像に忠実、1に近いほどプロンプト重視")
         with col2:
-            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K"], index=0, help="Flux 2のみ有効")
+            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K", "4K"], index=0, help="Seedream / Nano Banana Pro / Flux 2")
         
         aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
         
-        st.info("ℹ️ 'Nano Banana Pro' と 'Flux 2 Flex' の2つのエンジンで同時に生成します。")
+        # モデル選択
+        model_options = ["Nano Banana Pro", "Flux 2 Flex", "Seedream 4.5 Edit"]
+        selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Seedream 4.5 Edit", "Nano Banana Pro", "Flux 2 Flex"])
+        
+        st.info(f"ℹ️ 選択された {len(selected_models)} つのエンジンで同時に生成します。")
 
         run_button = st.button("パースを生成する", type="primary")
 
@@ -317,38 +321,60 @@ Let the light emphasize the geometry and edges of the architecture."""
                         st.stop()
                     callback_url = f"https://webhook.site/{wh_uuid}"
                     
-                    # C. タスク作成 (2つのエンジン)
+                    # C. タスク作成
                     url = "https://api.kie.ai/api/v1/jobs/createTask"
                     
                     tasks = {} # {task_id: {"engine": name, "status": "pending", "result_url": None}}
                     
-                    # Engine 1: Nano Banana Pro
-                    payload_nano = {
-                        "model": "nano-banana-pro",
-                        "callBackUrl": callback_url,
-                        "input": {
-                            "prompt": prompt,
-                            "image_input": input_urls,
-                            "aspect_ratio": aspect_ratio,
-                            "output_format": "png"
-                        }
-                    }
+                    # Payloads construction
+                    payloads = []
                     
-                    # Engine 2: Flux 2 Flex
-                    payload_flux = {
-                        "model": "flux-2/flex-image-to-image",
-                        "callBackUrl": callback_url,
-                        "input": {
-                            "input_urls": input_urls,
-                            "prompt": prompt,
-                            "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
-                            "resolution": resolution,
-                            "strength": strength
-                        }
-                    }
+                    # 1. Nano Banana Pro
+                    if "Nano Banana Pro" in selected_models:
+                        payloads.append(("Nano Banana Pro", {
+                            "model": "nano-banana-pro",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "prompt": prompt,
+                                "image_input": input_urls,
+                                "aspect_ratio": aspect_ratio,
+                                "resolution": resolution,
+                                "output_format": "png"
+                            }
+                        }))
+                    
+                    # 2. Flux 2 Flex
+                    if "Flux 2 Flex" in selected_models:
+                        payloads.append(("Flux 2 Flex", {
+                            "model": "flux-2/flex-image-to-image",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "input_urls": input_urls,
+                                "prompt": prompt,
+                                "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
+                                "resolution": resolution,
+                                "strength": strength
+                            }
+                        }))
+
+                    # 3. Seedream 4.5 Edit
+                    if "Seedream 4.5 Edit" in selected_models:
+                        # Quality param mapping
+                        sd_quality = "high" if resolution == "4K" else "basic"
+                        
+                        payloads.append(("Seedream 4.5 Edit", {
+                            "model": "seedream/4.5-edit",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "prompt": prompt,
+                                "image_urls": input_urls,
+                                "aspect_ratio": aspect_ratio,
+                                "quality": sd_quality
+                            }
+                        }))
 
                     # Send Requests
-                    for engine_name, payload in [("Nano Banana Pro", payload_nano), ("Flux 2 Flex", payload_flux)]:
+                    for engine_name, payload in payloads:
                         try:
                             res = requests.post(url, headers=headers, data=json.dumps(payload))
                             if res.status_code == 200:
@@ -528,7 +554,13 @@ Let the light emphasize the geometry and edges of the architecture."""
             for idx, record in enumerate(recent_results):
                 with cols[idx % 4]:
                     try:
-                        st.image(record['image_url'], use_container_width=True)
+                        # 拡張子で判定して動画または画像を表示
+                        url = record['image_url']
+                        if url and (url.endswith(".mp4") or url.endswith(".mov") or url.endswith(".webm")):
+                            st.video(url)
+                        else:
+                            st.image(url, use_container_width=True)
+                            
                         st.caption(f"{record['engine']} | {record['timestamp']}")
                         with st.expander("プロンプト"):
                             st.text(record['prompt'])
@@ -541,128 +573,188 @@ Let the light emphasize the geometry and edges of the architecture."""
 # ==========================================
 # Tab 2: ギャラリー & Drive
 # ==========================================
+# ==========================================
+# Tab 2: 動画生成 (Video)
+# ==========================================
+# ==========================================
+# Tab 2: 動画生成 (Veo 3.1)
+# ==========================================
 with tab2:
-    st.subheader("📂 Google Drive 画像連携 & 自動カテゴリ分け")
+    st.subheader("🎥 動画生成 (Veo 3.1)")
+    
+    # --- UI Layout based on Veo 3.1 Playground ---
+    
+    # 1. Generation Type
+    gen_type = st.radio("生成タイプ (Generation Type)", ["Text to Video", "Image to Video"], horizontal=True)
+    
+    # 2. Model Selection
+    model_friendly_names = {"Veo 3.1 Fast": "veo3_fast", "Veo 3.1 Quality": "veo3"}
+    selected_model_name = st.radio("モデル (Model)", list(model_friendly_names.keys()), horizontal=True)
+    selected_model_id = model_friendly_names[selected_model_name]
 
-    with st.expander("Google Drive 連携の使い方"):
-        service, sa_email = drive_utils.get_drive_service()
-        if sa_email:
-            st.markdown(f"""
-            1. Google Driveで対象のフォルダを右クリックし、「共有」を選択します。
-            2. 以下のメールアドレスを「閲覧者」として追加してください。
-            
-            `{sa_email}`
-            
-            3. フォルダのURLからIDをコピーします。
-            4. **Gemini API Key** が設定されていることを確認してください（自動カテゴリ分けに必要です）。
-            """)
-        else:
-            st.warning("サービスアカウントの設定が見つかりません。")
-
-    folder_id = st.text_input("Google Drive フォルダIDを入力", placeholder="例: 1A2B3C...")
-
-    col_drive_ops, col_drive_filter = st.columns([1, 2])
-
-    with col_drive_ops:
-        load_btn = st.button("画像を読み込む (一覧表示)")
-        auto_cat_btn = st.button("自動カテゴリ分けを実行 (Gemini)", type="primary")
-
-    if folder_id:
-        # 1. 画像読み込み (一覧表示)
-        if load_btn:
-            with st.spinner("Google Driveから画像を検索中..."):
-                files = drive_utils.list_images_in_folder(folder_id, limit=20)
-                if files:
-                    st.success(f"{len(files)} 枚の画像が見つかりました。")
-                    cols = st.columns(4)
-                    for idx, file in enumerate(files):
-                        with cols[idx % 4]:
-                            if 'thumbnailLink' in file:
-                                thumb_url = file['thumbnailLink'].replace("=s220", "=s1024")
-                                st.image(thumb_url, caption=file['name'], use_container_width=True)
-                            else:
-                                st.write(file['name'])
-                else:
-                    st.warning("画像が見つかりませんでした。")
-
-        # 2. 自動カテゴリ分け
-        if auto_cat_btn:
-            if not GEMINI_API_KEY:
-                st.error("Gemini API Keyが設定されていません。サイドバーまたはsecretsで設定してください。")
-            else:
-                with st.spinner("画像を解析してカテゴリ分け中... (これには時間がかかります)"):
-                    files = drive_utils.list_images_in_folder(folder_id, limit=20) # 制限付き
-                    if files:
-                        progress_bar = st.progress(0)
-                        count = 0
-                        
-                        # 既存のカテゴリ済みデータを取得して重複回避（簡易）
-                        # existing = db.get_categorized_images(limit=1000)
-                        # existing_ids = [e['file_id'] for e in existing]
-                        
-                        for i, file in enumerate(files):
-                            # if file['id'] in existing_ids:
-                            #     continue
-                            
-                            # 画像データ取得
-                            img_data = drive_utils.get_image_data(file['id'])
-                            if img_data:
-                                # Geminiで解析
-                                result, error = categorize_image_with_gemini(img_data)
-                                if result:
-                                    category = result.get("category", "その他")
-                                    description = result.get("description", "")
-                                    
-                                    # サムネイルURLを保存用URLとして使用 (本来は永続的なURLが望ましいがDriveの場合はこれで)
-                                    img_url = file.get('thumbnailLink', '').replace("=s220", "=s1024")
-                                    
-                                    # DB保存
-                                    db.save_categorized_image(file['id'], img_url, category, description, folder_id)
-                                    count += 1
-                                else:
-                                    st.warning(f"解析失敗 ({file['name']}): {error}")
-                            
-                            progress_bar.progress((i + 1) / len(files))
-                        
-                        st.success(f"{count} 枚の画像をカテゴリ分けして保存しました！")
-                    else:
-                        st.warning("画像が見つかりませんでした。")
-
-    # 3. カテゴリ別ギャラリー表示
-    st.markdown("### 🗂 カテゴリ別ギャラリー")
-
-    # カテゴリフィルタ
-    categories = ["すべて", "リビング", "ダイニング", "キッチン", "寝室", "バスルーム", "玄関", "外観", "庭", "その他"]
-    selected_category = st.selectbox("カテゴリを選択", categories)
-
-    if db.get_connection():
-        # "すべて" の場合は None を渡すか、DB側で処理
-        cat_filter = None if selected_category == "すべて" else selected_category
-        cat_images = db.get_categorized_images(cat_filter, limit=50)
+    # 3. Inputs
+    input_image_url = None
+    
+    if gen_type == "Image to Video":
+        st.markdown("### 画像 (Image)")
+        v_uploaded_file = st.file_uploader("開始フレーム画像をアップロード", type=["jpg", "png", "jpeg", "webp"], key="veo_uploader")
         
-        if cat_images:
-            st.markdown(f"**{len(cat_images)}** 枚の画像を表示中")
+        if v_uploaded_file:
+            st.image(v_uploaded_file, caption="Input Image", width=300)
             
-            cols = st.columns(4)
-            for idx, img_data in enumerate(cat_images):
-                with cols[idx % 4]:
+    # 4. Prompt
+    st.markdown("### 生成プロンプト (Prompt)")
+    v_prompt = st.text_area("動画の内容を記述してください", value="", height=100, placeholder="A cinematic shot of...", key="veo_prompt")
+    
+    # 5. Aspect Ratio
+    col_ar, col_seed = st.columns(2)
+    with col_ar:
+        ar_options = ["16:9", "9:16", "1:1", "4:3", "3:4"]
+        aspect_ratio = st.selectbox("比率 (Aspect Ratio)", ar_options, index=0)
+        
+    with col_seed:
+        seed = st.number_input("シード (Seed, 任意)", min_value=0, value=0, help="0はランダム")
+        if seed == 0:
+            seed = None
+
+    # --- Run Button ---
+    run_veo_btn = st.button("動画を生成する (Generate Video)", type="primary", use_container_width=True)
+
+    # --- Processing ---
+    if run_veo_btn:
+        if not API_KEY:
+            st.error("API Keyが必要です。")
+            st.stop()
+            
+        if not v_prompt:
+             st.error("プロンプトを入力してください。")
+             st.stop()
+             
+        if gen_type == "Image to Video" and not v_uploaded_file:
+            st.error("画像をアップロードしてください。")
+            st.stop()
+
+        # Output Area
+        result_container = st.container()
+        
+        with result_container:
+            status_text = st.empty()
+            prog_bar = st.progress(0)
+            
+            try:
+                # 1. Upload Image (if needed)
+                image_urls = []
+                if gen_type == "Image to Video" and v_uploaded_file:
+                    with st.spinner("画像をアップロード中..."):
+                        headers = {
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {API_KEY}"
+                        }
+                        
+                        image = Image.open(v_uploaded_file)
+                        if image_to_base64: 
+                            b64_img = image_to_base64(image)
+                            input_url = upload_image_to_kieai(headers, b64_img) 
+                            
+                            if input_url:
+                                image_urls.append(input_url)
+                            else:
+                                st.error("画像のアップロードに失敗しました。")
+                                st.stop()
+
+                # 2. Prepare Payload
+                wh_uuid = get_webhook_token()
+                callback_url = f"https://webhook.site/{wh_uuid}"
+                
+                # API Endpoint
+                generate_url = "https://api.kie.ai/api/v1/veo/generate"
+                
+                payload = {
+                    "prompt": v_prompt,
+                    "model": selected_model_id,
+                    "aspectRatio": aspect_ratio,
+                    "callBackUrl": callback_url
+                }
+                
+                if image_urls:
+                    payload["imageUrls"] = image_urls
+                
+                if seed:
+                    payload["seed"] = seed
+
+                # 3. Submit Task
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {API_KEY}"
+                }
+                
+                status_text.info("タスクを送信中...")
+                res = requests.post(generate_url, headers=headers, json=payload)
+                
+                if res.status_code != 200:
+                    st.error(f"API Error ({res.status_code}): {res.text}")
+                    st.stop()
+                    
+                resp_data = res.json()
+                if resp_data.get("code") != 200:
+                    st.error(f"Request Failed: {resp_data.get('msg')}")
+                    st.stop()
+                    
+                task_id = resp_data["data"]["taskId"]
+                st.toast(f"タスク開始: {task_id}")
+                
+                # 4. Polling
+                start_ts = time.time()
+                poll_url = f"https://api.kie.ai/api/v1/veo/record-info?taskId={task_id}"
+                
+                status_text.markdown(f"**生成中...** (Task ID: `{task_id}`)")
+                
+                while True:
+                    elapsed = time.time() - start_ts
+                    if elapsed > 600: # 10 minutes timeout
+                        st.error("タイムアウトしました。")
+                        break
+                        
+                    # Progress simulation (approx 2 mins for fast, 5 for quality)
+                    estimated_duration = 120 if "fast" in selected_model_id else 300
+                    prog_bar.progress(min(elapsed / estimated_duration, 0.95))
+                    
                     try:
-                        # カード風デザインで表示
-                        st.markdown(f"""
-                        <div class="gallery-card">
-                            <img src="{img_data['image_url']}" style="width:100%">
-                            <div class="gallery-content">
-                                <div class="gallery-title">{img_data['category']}</div>
-                                <div class="gallery-desc">{img_data['description']}</div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    except:
+                        poll_res = requests.get(poll_url, headers=headers)
+                        if poll_res.status_code == 200:
+                            poll_data = poll_res.json()
+                            if poll_data.get("code") == 200:
+                                data = poll_data["data"]
+                                success_flag = data.get("successFlag")
+                                
+                                # 0: Generating, 1: Success, 2/3: Failed
+                                if success_flag == 1:
+                                    prog_bar.progress(1.0)
+                                    status_text.success("生成完了！")
+                                    
+                                    # Parse result URLs
+                                    if "resultUrls" in data:
+                                        video_urls = json.loads(data["resultUrls"])
+                                        for v_url in video_urls:
+                                            st.video(v_url)
+                                            st.success(f"Video URL: {v_url}")
+                                            
+                                            # Save to DB
+                                            db.save_result(v_url, v_prompt, f"Veo 3.1 ({selected_model_name})")
+                                            st.toast("コミュニティギャラリーに保存しました！")
+                                    break
+                                
+                                elif success_flag in [2, 3]:
+                                    st.error(f"生成失敗: {poll_data.get('msg', 'Unknown error')}")
+                                    break
+                    except Exception as e:
+                        # print(f"Polling error: {e}")
                         pass
-        else:
-            st.info("このカテゴリの画像はまだありません。")
-    else:
-        st.info("データベースに接続されていません。")
+                    
+                    time.sleep(5) # Poll every 5 seconds
+                    
+            except Exception as e:
+                st.error(f"システムエラー: {e}")
 
 
 # --- フッター (Credits) ---
