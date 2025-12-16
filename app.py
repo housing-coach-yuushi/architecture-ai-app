@@ -345,6 +345,9 @@ Let the light emphasize the geometry and edges of the architecture."""
                     
                     # 2. Flux 2 Flex
                     if "Flux 2 Flex" in selected_models:
+                        # Fix: Flux 2 does not support 4K, so map 4K -> 2K
+                        flux_resolution = "2K" if resolution == "4K" else resolution
+                        
                         payloads.append(("Flux 2 Flex", {
                             "model": "flux-2/flex-image-to-image",
                             "callBackUrl": callback_url,
@@ -352,7 +355,7 @@ Let the light emphasize the geometry and edges of the architecture."""
                                 "input_urls": input_urls,
                                 "prompt": prompt,
                                 "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
-                                "resolution": resolution,
+                                "resolution": flux_resolution,
                                 "strength": strength
                             }
                         }))
