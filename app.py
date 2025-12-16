@@ -329,52 +329,57 @@ Let the light emphasize the geometry and edges of the architecture."""
                     # Payloads construction
                     payloads = []
                     
-                    # 1. Nano Banana Pro
-                    if "Nano Banana Pro" in selected_models:
-                        payloads.append(("Nano Banana Pro", {
-                            "model": "nano-banana-pro",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "prompt": prompt,
-                                "image_input": input_urls,
-                                "aspect_ratio": aspect_ratio,
-                                "resolution": resolution,
-                                "output_format": "png"
-                            }
-                        }))
-                    
-                    # 2. Flux 2 Flex
-                    if "Flux 2 Flex" in selected_models:
-                        # Fix: Flux 2 does not support 4K, so map 4K -> 2K
-                        flux_resolution = "2K" if resolution == "4K" else resolution
-                        
-                        payloads.append(("Flux 2 Flex", {
-                            "model": "flux-2/flex-image-to-image",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "input_urls": input_urls,
-                                "prompt": prompt,
-                                "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
-                                "resolution": flux_resolution,
-                                "strength": strength
-                            }
-                        }))
+                    # Iterate over each uploaded image to create separate tasks
+                    for img_idx, single_img_url in enumerate(input_urls):
+                        img_label = f"#{img_idx + 1}"
+                        single_input_list = [single_img_url] # API expects a list
 
-                    # 3. Seedream 4.5 Edit
-                    if "Seedream 4.5 Edit" in selected_models:
-                        # Quality param mapping
-                        sd_quality = "high" if resolution == "4K" else "basic"
+                        # 1. Nano Banana Pro
+                        if "Nano Banana Pro" in selected_models:
+                            payloads.append((f"Nano Banana Pro {img_label}", {
+                                "model": "nano-banana-pro",
+                                "callBackUrl": callback_url,
+                                "input": {
+                                    "prompt": prompt,
+                                    "image_input": single_input_list,
+                                    "aspect_ratio": aspect_ratio,
+                                    "resolution": resolution,
+                                    "output_format": "png"
+                                }
+                            }))
                         
-                        payloads.append(("Seedream 4.5 Edit", {
-                            "model": "seedream/4.5-edit",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "prompt": prompt,
-                                "image_urls": input_urls,
-                                "aspect_ratio": aspect_ratio,
-                                "quality": sd_quality
-                            }
-                        }))
+                        # 2. Flux 2 Flex
+                        if "Flux 2 Flex" in selected_models:
+                            # Fix: Flux 2 does not support 4K, so map 4K -> 2K
+                            flux_resolution = "2K" if resolution == "4K" else resolution
+                            
+                            payloads.append((f"Flux 2 Flex {img_label}", {
+                                "model": "flux-2/flex-image-to-image",
+                                "callBackUrl": callback_url,
+                                "input": {
+                                    "input_urls": single_input_list,
+                                    "prompt": prompt,
+                                    "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
+                                    "resolution": flux_resolution,
+                                    "strength": strength
+                                }
+                            }))
+
+                        # 3. Seedream 4.5 Edit
+                        if "Seedream 4.5 Edit" in selected_models:
+                            # Quality param mapping
+                            sd_quality = "high" if resolution == "4K" else "basic"
+                            
+                            payloads.append((f"Seedream 4.5 Edit {img_label}", {
+                                "model": "seedream/4.5-edit",
+                                "callBackUrl": callback_url,
+                                "input": {
+                                    "prompt": prompt,
+                                    "image_urls": single_input_list,
+                                    "aspect_ratio": aspect_ratio,
+                                    "quality": sd_quality
+                                }
+                            }))
 
                     # Send Requests
                     for engine_name, payload in payloads:
