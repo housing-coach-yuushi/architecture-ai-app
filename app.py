@@ -745,8 +745,17 @@ with tab2:
                                     status_text.success("生成完了！")
                                     
                                     # Parse result URLs
-                                    if "resultUrls" in data:
-                                        video_urls = json.loads(data["resultUrls"])
+                                    video_urls = []
+                                    if "response" in data and "resultUrls" in data["response"]:
+                                        video_urls = data["response"]["resultUrls"]
+                                    elif "resultUrls" in data:
+                                        # Fallback or older API style
+                                        if isinstance(data["resultUrls"], str):
+                                            video_urls = json.loads(data["resultUrls"])
+                                        else:
+                                            video_urls = data["resultUrls"]
+                                    
+                                    if video_urls:
                                         for i, v_url in enumerate(video_urls):
                                             st.video(v_url)
                                             
