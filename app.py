@@ -600,6 +600,10 @@ with tab2:
     selected_model_name = st.radio("モデル (Model)", list(model_friendly_names.keys()), horizontal=True)
     selected_model_id = model_friendly_names[selected_model_name]
 
+    # Initialize Session State for Video Results
+    if 'video_results' not in st.session_state:
+        st.session_state.video_results = []
+
     # 3. Inputs
     input_image_url = None
     
@@ -746,16 +750,26 @@ with tab2:
                                         for i, v_url in enumerate(video_urls):
                                             st.video(v_url)
                                             
-                                            # Download button
+                                            # Fetch and Store for Persistence
                                             try:
                                                 v_response = requests.get(v_url)
                                                 if v_response.status_code == 200:
+                                                    # Store in session state
+                                                    st.session_state.video_results.append({
+                                                        "url": v_url,
+                                                        "content": v_response.content,
+                                                        "prompt": v_prompt,
+                                                        "model": selected_model_name,
+                                                        "timestamp": int(time.time())
+                                                    })
+                                                    
+                                                    # Show immediate download button
                                                     st.download_button(
                                                         label="📥 動画をダウンロード",
                                                         data=v_response.content,
                                                         file_name=f"veo_video_{int(time.time())}_{i+1}.mp4",
                                                         mime="video/mp4",
-                                                        key=f"dl_btn_{task_id}_{i}"
+                                                        key=f"dl_btn_immediate_{task_id}_{i}"
                                                     )
                                             except Exception as e:
                                                 print(f"Download preparation failed: {e}")
@@ -778,6 +792,35 @@ with tab2:
                     
             except Exception as e:
                 st.error(f"システムエラー: {e}")
+
+    # --- Session Gallery ---
+    st.markdown("---")
+    st.subheader("🎥 生成ビデオギャラリー (Session)")
+
+    if st.session_state.video_results:
+        # Display in grid
+        v_cols = st.columns(2)
+        # Reverse to show newest first
+        for i, v_item in enumerate(reversed(st.session_state.video_results)): 
+            with v_cols[i % 2]:
+                st.video(v_item["url"])
+                
+                col_dl, col_pmt = st.columns([1, 2])
+                with col_dl:
+                    if v_item.get("content"):
+                        st.download_button(
+                            label="📥 ダウンロード",
+                            data=v_item["content"],
+                            file_name=f"veo_{v_item['timestamp']}_{i}.mp4",
+                            mime="video/mp4",
+                            key=f"gallery_dl_{i}"
+                        )
+                with col_pmt:
+                    with st.expander("プロンプト"):
+                        st.caption(f"Model: {v_item.get('model', 'Unknown')}")
+                        st.text(v_item["prompt"])
+    else:
+        st.info("まだ動画が生成されていません。")
 
 
 # --- フッター (Credits) ---
