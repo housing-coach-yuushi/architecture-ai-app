@@ -743,8 +743,23 @@ with tab2:
                                     # Parse result URLs
                                     if "resultUrls" in data:
                                         video_urls = json.loads(data["resultUrls"])
-                                        for v_url in video_urls:
+                                        for i, v_url in enumerate(video_urls):
                                             st.video(v_url)
+                                            
+                                            # Download button
+                                            try:
+                                                v_response = requests.get(v_url)
+                                                if v_response.status_code == 200:
+                                                    st.download_button(
+                                                        label="📥 動画をダウンロード",
+                                                        data=v_response.content,
+                                                        file_name=f"veo_video_{int(time.time())}_{i+1}.mp4",
+                                                        mime="video/mp4",
+                                                        key=f"dl_btn_{task_id}_{i}"
+                                                    )
+                                            except Exception as e:
+                                                print(f"Download preparation failed: {e}")
+
                                             st.success(f"Video URL: {v_url}")
                                             
                                             # Save to DB
