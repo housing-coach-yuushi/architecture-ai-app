@@ -566,7 +566,7 @@ Let the light emphasize the geometry and edges of the architecture."""
                         url = record['image_url']
                         if url and (url.endswith(".mp4") or url.endswith(".mov") or url.endswith(".webm")):
                             st.video(url)
-                            st.link_button("🔗 動画を開く(保存)", url)
+                            st.markdown(f"[🔗 動画を開く(保存)]({url})")
                         else:
                             st.image(url, use_container_width=True)
                             
@@ -844,7 +844,7 @@ with tab2:
         for i, h_item in enumerate(recent_videos[:10]):
             with h_cols[i % 2]:
                 st.video(h_item['image_url'])
-                st.link_button("🔗 動画を開く(保存)", h_item['image_url'], key=f"hist_link_{i}")
+                st.markdown(f"[🔗 動画を開く(保存)]({h_item['image_url']})")
                 st.caption(f"{h_item['timestamp']}")
     else:
         st.write("履歴がありません。")
