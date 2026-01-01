@@ -396,12 +396,15 @@ Let the light emphasize the geometry and edges of the architecture."""
                             # Quality: 4Kの場合はhigh、それ以外はmedium
                             gpt_quality = "high" if resolution == "4K" else "medium"
                             
+                            # プロンプトを最大1000文字に切り詰め (API制限)
+                            gpt_prompt = prompt[:1000] if len(prompt) > 1000 else prompt
+                            
                             payloads.append((f"GPT Image 1.5 {img_label}", {
                                 "model": "gpt-image/1.5-image-to-image",
                                 "callBackUrl": callback_url,
                                 "input": {
                                     "input_urls": single_input_list,
-                                    "prompt": prompt,
+                                    "prompt": gpt_prompt,
                                     "aspect_ratio": gpt_aspect,
                                     "quality": gpt_quality
                                 }
