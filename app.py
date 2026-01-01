@@ -220,38 +220,29 @@ with tab1:
         
         # プロンプト設定
         st.subheader("2. 設定")
-        default_prompt = """Create a photorealistic version of the input image.
+        default_prompt = """添付の建築パースをフォトリアルにしてください。
+建物の形状・構成・アングル・奥行・カメラ位置・パースラインは絶対に変更しないでください。
+素材・質感・光の表現だけを実写に寄せてください。
 
-Do NOT alter or modify the building geometry, proportions, dimensions, window placement, roof line, entrance area, exterior wall lines, or foundation height.  
-Preserve every edge, perspective, and shadow boundary exactly as in the input image.  
-Keep the original camera position, field of view, and composition unchanged.  
-Do NOT crop, rotate, rescale, stretch, or recompose the image.
+【必ず守ってほしい内容】
+・外観の形状を一切変えない
+・窓の位置、壁のライン、屋根形状、陰影の付き方の方向はそのまま
+・広角率を変えない
+・縦横比（例：3:4、横長）を維持
+・背景の構成を変えない（変更したい場合は指定する）
 
-Render on a **horizontal 4:3 rectangular canvas (landscape orientation, wider than tall)**.  
-If the model defaults to square, **expand horizontally** by extending neutral background areas (sky, road, or vegetation) until the exact 4:3 ratio is achieved.  
-Do NOT crop or distort the building to fit the ratio.
+【今回のフォトリアル化条件】
+・外壁は窯業系サイディングの質感を出す
+・道路はアスファルトの質感を出す
+・背景：住宅街
+・コンクリート反射：なし
+・窓ガラス反射：あり
+・天候：晴れ
+・人物：不要
 
-The building’s front façade (entrance side) must remain perfectly parallel to the road,  
-and the road edge must stay perfectly horizontal along the bottom of the frame.  
-The camera must face the building front perpendicularly (no diagonal or angled view).  
-No tilt-shift or perspective correction.
-
----
-
-### 🌿 Exterior & Lighting – Luxury Emphasis
-Do **not** include any vehicles.  
-Focus entirely on **landscaping, lighting, and material realism** to convey luxury and architectural refinement.  
-
-Design the **exterior space** (driveway, entrance approach, garden, boundary area)  
-to reflect a **high-end Japanese residence** — elegant, calm, and spatially balanced.  
-Use a **concrete or stone-paved forecourt** with clean, precise joint lines.  
-Add tasteful exterior elements such as **low walls (H=0.6–0.9 m), stone planters, bollard or post lights, and minimalist gate posts**,  
-all aligned parallel to the building and the road.
-
-Use **soft directional daylight** from SE–SW (45–60° azimuth, 30–45° altitude).  
-Simulate gentle **“komorebi” dappled sunlight** filtering through nearby trees,  
-creating dynamic shadows that reveal surface depth and material richness.  
-Let the light emphasize the geometry and edges of the architecture."""
+【重要】
+建物の形状や寸法感が変わるような解釈は絶対にしないでください。
+元画像の輪郭線と構造はそのまま、質感だけを高精細フォトリアルに仕上げてください。"""
 
         prompt = st.text_area(
             "プロンプト (どのような建物にしたいか)", 
