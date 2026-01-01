@@ -269,7 +269,7 @@ Let the light emphasize the geometry and edges of the architecture."""
         aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
         
         # モデル選択
-        model_options = ["Nano Banana Pro", "Flux 2 Flex", "Seedream 4.5 Edit"]
+        model_options = ["Nano Banana Pro", "Flux 2 Flex", "Seedream 4.5 Edit", "GPT Image 1.5"]
         selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Seedream 4.5 Edit", "Nano Banana Pro", "Flux 2 Flex"])
         
         st.info(f"ℹ️ 選択された {len(selected_models)} つのエンジンで同時に生成します。")
@@ -378,6 +378,32 @@ Let the light emphasize the geometry and edges of the architecture."""
                                     "image_urls": single_input_list,
                                     "aspect_ratio": aspect_ratio,
                                     "quality": sd_quality
+                                }
+                            }))
+                        
+                        # 4. GPT Image 1.5 (KIE AI)
+                        if "GPT Image 1.5" in selected_models:
+                            # GPT Image 1.5のアスペクト比マッピング (サポート: 1:1, 2:3, 3:2)
+                            gpt_ar_mapping = {
+                                "16:9": "3:2",  # 横長 -> 3:2
+                                "9:16": "2:3",  # 縦長 -> 2:3
+                                "1:1": "1:1",   # 正方形
+                                "4:3": "3:2",   # 横長 -> 3:2
+                                "3:4": "2:3"    # 縦長 -> 2:3
+                            }
+                            gpt_aspect = gpt_ar_mapping.get(aspect_ratio, "3:2")
+                            
+                            # Quality: 4Kの場合はhigh、それ以外はmedium
+                            gpt_quality = "high" if resolution == "4K" else "medium"
+                            
+                            payloads.append((f"GPT Image 1.5 {img_label}", {
+                                "model": "gpt-image/1.5-image-to-image",
+                                "callBackUrl": callback_url,
+                                "input": {
+                                    "input_urls": single_input_list,
+                                    "prompt": prompt,
+                                    "aspect_ratio": gpt_aspect,
+                                    "quality": gpt_quality
                                 }
                             }))
 
