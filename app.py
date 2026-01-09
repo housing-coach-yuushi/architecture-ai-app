@@ -44,6 +44,9 @@ CREATE_TASK_URL = "https://api.kie.ai/api/v1/jobs/createTask"
 # --- 関数: 画像をBase64文字列に変換 ---
 def image_to_base64(image):
     buffered = io.BytesIO()
+    # RGBA (透過) 画像の場合はRGBに変換 (JPEG対応のため)
+    if image.mode in ("RGBA", "LA", "P"):
+        image = image.convert("RGB")
     # JPEG形式で軽量化して変換（API制限対策）
     image.save(buffered, format="JPEG", quality=90)
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
