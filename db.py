@@ -91,8 +91,9 @@ def save_result(image_url, prompt, engine, user_id="anonymous"):
             return False
     return False
 
+@st.cache_data(ttl=300)
 def get_recent_results(limit=50):
-    """最新の生成結果を取得"""
+    """最新の生成結果を取得 (Cached for 5 min)"""
     worksheet = init_db("gallery_data")
     if worksheet:
         try:
