@@ -1,0 +1,12 @@
+{
+    "buildCommand": "npm run app-production",
+    "outputDirectory": "app",
+    "installCommand": "npm install",
+    "framework": null,
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/$1"
+        }
+    ]
+}

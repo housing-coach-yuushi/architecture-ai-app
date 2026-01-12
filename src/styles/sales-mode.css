@@ -1,0 +1,501 @@
+/* =============================================================================
+   セットプラン 営業モード スタイル
+   ============================================================================= */
+
+:root {
+    /* カラーパレット */
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --secondary: #64748b;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+
+    /* グレースケール */
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+
+    /* サイズ */
+    --header-height: 56px;
+    --sidebar-width: 280px;
+    --toolbar-height: 40px;
+    --status-height: 32px;
+
+    /* 部屋カラー */
+    --room-ldk: #4CAF50;
+    --room-bedroom: #2196F3;
+    --room-children: #03A9F4;
+    --room-japanese: #8BC34A;
+    --room-bathroom: #00BCD4;
+    --room-washroom: #00ACC1;
+    --room-toilet: #26C6DA;
+    --room-entrance: #FF9800;
+    --room-hallway: #FFC107;
+    --room-closet: #795548;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-800);
+    overflow: hidden;
+}
+
+/* =============================================================================
+   ヘッダー
+   ============================================================================= */
+
+.header {
+    height: var(--header-height);
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.mode-badge {
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.header-center input {
+    width: 300px;
+    padding: 8px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.header-center input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.header-right {
+    display: flex;
+    gap: 8px;
+}
+
+/* =============================================================================
+   ボタン
+   ============================================================================= */
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-200);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-200);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* =============================================================================
+   メインコンテナ
+   ============================================================================= */
+
+.main-container {
+    display: flex;
+    height: calc(100vh - var(--header-height));
+}
+
+/* =============================================================================
+   サイドバー
+   ============================================================================= */
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: white;
+    border-right: 1px solid var(--gray-200);
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+/* モードボタン */
+.mode-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.mode-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    border: 2px solid var(--gray-200);
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.mode-btn.active {
+    border-color: var(--primary);
+    background: #eff6ff;
+}
+
+.mode-btn .icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.mode-btn span:last-child {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-600);
+}
+
+/* フォーム */
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-600);
+    margin-bottom: 4px;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+/* コンパス */
+.compass {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+.compass-btn {
+    padding: 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.compass-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* 形状ボタン */
+.shape-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.shape-btn {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.shape-btn:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-300);
+}
+
+.shape-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* ヒント */
+.hint {
+    font-size: 11px;
+    color: var(--gray-400);
+    line-height: 1.5;
+    margin: 12px 0;
+}
+
+/* パレット */
+.palette {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.palette-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.palette-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.palette-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: grab;
+    transition: all 0.15s ease;
+}
+
+.palette-item:hover {
+    background: white;
+    border-color: var(--gray-300);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.palette-item:active {
+    cursor: grabbing;
+}
+
+.color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 配置済みリスト */
+.placed-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.placed-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    background: var(--gray-50);
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+.empty-message {
+    font-size: 12px;
+    color: var(--gray-400);
+    text-align: center;
+    padding: 16px;
+}
+
+/* =============================================================================
+   キャンバスエリア
+   ============================================================================= */
+
+.canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--gray-100);
+}
+
+.canvas-toolbar {
+    height: var(--toolbar-height);
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 4px;
+}
+
+.toolbar-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-300);
+}
+
+.separator {
+    width: 1px;
+    height: 20px;
+    background: var(--gray-200);
+    margin: 0 8px;
+}
+
+.canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+#main-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+.canvas-status {
+    height: var(--status-height);
+    background: var(--gray-800);
+    color: var(--gray-300);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 24px;
+    font-size: 12px;
+}
+
+/* =============================================================================
+   モーダル
+   ============================================================================= */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    margin-bottom: 16px;
+    font-size: 18px;
+}
+
+.modal-content textarea {
+    width: 100%;
+    height: 300px;
+    padding: 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    resize: none;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+}

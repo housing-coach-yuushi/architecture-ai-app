@@ -13,3 +13,4 @@ TextureSources/*
 
 __pycache__
 package-lock.json
+.vercel

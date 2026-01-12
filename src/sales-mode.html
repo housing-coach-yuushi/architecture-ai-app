@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>セットプラン - 営業モード</title>
+    <link rel="stylesheet" href="styles/sales-mode.css">
+</head>
+
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-left">
+            <h1 class="logo">🏠 セットプラン</h1>
+            <span class="mode-badge">営業モード</span>
+        </div>
+        <div class="header-center">
+            <input type="text" id="project-name" placeholder="プロジェクト名を入力" value="新規プロジェクト">
+        </div>
+        <div class="header-right">
+            <button id="btn-save" class="btn btn-secondary">💾 保存</button>
+            <button id="btn-export" class="btn btn-primary">📤 エクスポート</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- サイドバー -->
+        <aside class="sidebar">
+            <div class="actions">
+                <!-- 追加: ファイル操作 -->
+                <button onclick="salesApp.loadFromFile()" class="button secondary">
+                    <i class="fas fa-folder-open"></i> 開く
+                </button>
+                <button onclick="salesApp.saveToFile()" class="button secondary">
+                    <i class="fas fa-save"></i> 名前を付けて保存
+                </button>
+
+                <button onclick="salesApp.sendToAIApp()" class="button primary" style="background-color: #8e44ad;">
+                    <i class="fas fa-magic"></i> AIアプリへ送る
+                </button>
+
+                <button onclick="salesApp.showExportModal()" class="button secondary">
+                    <i class="fas fa-file-export"></i> エクスポート
+                </button>
+                <button onclick="salesApp.reset()" class="button danger">
+                    <i class="fas fa-trash"></i> リセット
+                </button>
+            </div>
+            <!-- モード切替 -->
+            <div class="sidebar-section">
+                <h3 class="section-title">モード</h3>
+                <div class="mode-buttons">
+                    <button id="mode-site" class="mode-btn active" data-mode="site">
+                        <span class="icon">📐</span>
+                        <span>敷地</span>
+                    </button>
+                    <button id="mode-room" class="mode-btn" data-mode="room">
+                        <span class="icon">🏠</span>
+                        <span>部屋</span>
+                    </button>
+                    <button id="mode-opening" class="mode-btn" data-mode="opening">
+                        <span class="icon">🚪</span>
+                        <span>開口部</span>
+                    </button>
+                    <button id="mode-unit" class="mode-btn" data-mode="unit">
+                        <span class="icon">🚿</span>
+                        <span>設備</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 敷地設定 -->
+            <div id="panel-site" class="sidebar-section panel-content">
+                <h3 class="section-title">敷地設定</h3>
+                <div class="form-group">
+                    <label>グリッド</label>
+                    <select id="grid-module">
+                        <option value="910">尺モジュール (910mm)</option>
+                        <option value="1000">メーターモジュール (1000mm)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>北方向</label>
+                    <div class="compass">
+                        <button id="north-up" class="compass-btn active">↑ 上</button>
+                        <button id="north-right" class="compass-btn">→ 右</button>
+                        <button id="north-down" class="compass-btn">↓ 下</button>
+                        <button id="north-left" class="compass-btn">← 左</button>
+                    </div>
+                </div>
+                <p class="hint">クリックで敷地の頂点を配置<br>ダブルクリックで確定</p>
+                <button id="btn-clear-site" class="btn btn-danger btn-sm">敷地をクリア</button>
+            </div>
+
+            <!-- 部屋パレット -->
+            <div id="panel-room" class="sidebar-section panel-content" style="display:none;">
+                <h3 class="section-title">部屋を配置</h3>
+
+                <!-- 形状選択 -->
+                <div class="form-group">
+                    <label>形状</label>
+                    <div class="shape-buttons">
+                        <button id="shape-rect" class="shape-btn active" data-shape="rectangle" title="矩形">
+                            ⬜ 矩形
+                        </button>
+                        <button id="shape-l" class="shape-btn" data-shape="L" title="L字型">
+                            ⌐ L字
+                        </button>
+                        <button id="shape-u" class="shape-btn" data-shape="U" title="コの字型">
+                            ∪ コの字
+                        </button>
+                        <button id="shape-custom" class="shape-btn" data-shape="custom" title="自由多角形">
+                            ✏️ 自由
+                        </button>
+                    </div>
+                    <p class="shape-hint" id="custom-hint" style="display:none;">クリックで頂点を配置<br>ダブルクリックで確定</p>
+                </div>
+
+                <div class="palette" id="room-palette">
+                    <!-- 居住系 -->
+                    <div class="palette-group">
+                        <span class="palette-label">居住</span>
+                        <div class="palette-item" draggable="true" data-type="LDK" data-area="28">
+                            <span class="color-dot" style="background:#4CAF50"></span>
+                            LDK (28㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="bedroom" data-area="12">
+                            <span class="color-dot" style="background:#2196F3"></span>
+                            寝室 (12㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="children_room" data-area="8">
+                            <span class="color-dot" style="background:#03A9F4"></span>
+                            子供部屋 (8㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="japanese_room" data-area="10">
+                            <span class="color-dot" style="background:#8BC34A"></span>
+                            和室 (10㎡)
+                        </div>
+                    </div>
+                    <!-- 水回り -->
+                    <div class="palette-group">
+                        <span class="palette-label">水回り</span>
+                        <div class="palette-item" draggable="true" data-type="bathroom" data-area="4">
+                            <span class="color-dot" style="background:#00BCD4"></span>
+                            浴室 (4㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="washroom" data-area="3">
+                            <span class="color-dot" style="background:#00ACC1"></span>
+                            洗面 (3㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="toilet" data-area="2">
+                            <span class="color-dot" style="background:#26C6DA"></span>
+                            トイレ (2㎡)
+                        </div>
+                    </div>
+                    <!-- 収納・移動 -->
+                    <div class="palette-group">
+                        <span class="palette-label">その他</span>
+                        <div class="palette-item" draggable="true" data-type="entrance" data-area="4">
+                            <span class="color-dot" style="background:#FF9800"></span>
+                            玄関 (4㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="hallway" data-area="6">
+                            <span class="color-dot" style="background:#FFC107"></span>
+                            廊下 (6㎡)
+                        </div>
+                        <div class="palette-item" draggable="true" data-type="closet" data-area="3">
+                            <span class="color-dot" style="background:#795548"></span>
+                            収納 (3㎡)
+                        </div>
+                    </div>
+                </div>
+                <p class="hint">ドラッグしてキャンバスに配置<br>角をドラッグでサイズ変更</p>
+            </div>
+
+            <!-- 開口部パレット（窓・ドア）-->
+            <div id="panel-opening" class="sidebar-section panel-content" style="display:none;">
+                <h3 class="section-title">窓・ドアを配置</h3>
+                <div class="palette" id="opening-palette">
+                    <div class="palette-item" draggable="true" data-opening="window">
+                        <span class="color-dot" style="background:#2196F3">⬜</span>
+                        窓
+                    </div>
+                    <div class="palette-item" draggable="true" data-opening="door">
+                        <span class="color-dot" style="background:#8D6E63">🚪</span>
+                        ドア
+                    </div>
+                </div>
+                <p class="hint">ドラッグして壁の位置に配置<br>クリックで回転</p>
+            </div>
+
+            <!-- 設備パレット -->
+            <div id="panel-unit" class="sidebar-section panel-content" style="display:none;">
+                <h3 class="section-title">設備を配置</h3>
+                <div class="palette" id="unit-palette">
+                    <!-- 水回り設備 -->
+                    <div class="palette-group">
+                        <span class="palette-label">水回り</span>
+                        <div class="palette-item" draggable="true" data-unit="bath" data-size="1616">
+                            🛁 浴室ユニット (1616)
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="toilet" data-size="standard">
+                            🚽 トイレ
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="washstand" data-size="900">
+                            🪥 洗面台 (900)
+                        </div>
+                    </div>
+                    <!-- キッチン -->
+                    <div class="palette-group">
+                        <span class="palette-label">キッチン</span>
+                        <div class="palette-item" draggable="true" data-unit="kitchen" data-size="I_2500">
+                            🍳 I型 2500
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="kitchen" data-size="I_2700">
+                            🍳 I型 2700
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="kitchen" data-size="L_2500">
+                            🍳 L型 2500
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="kitchen" data-size="island">
+                            🍳 アイランド
+                        </div>
+                    </div>
+                    <!-- 階段 -->
+                    <div class="palette-group">
+                        <span class="palette-label">階段</span>
+                        <div class="palette-item" draggable="true" data-unit="stair" data-size="straight">
+                            🪜 直線階段
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="stair" data-size="U_left">
+                            🪜 U字(左回り)
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="stair" data-size="U_right">
+                            🪜 U字(右回り)
+                        </div>
+                    </div>
+                    <!-- 家具 -->
+                    <div class="palette-group">
+                        <span class="palette-label">家具</span>
+                        <div class="palette-item" draggable="true" data-unit="dining_table" data-size="4人">
+                            🍽️ ダイニング 4人
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="dining_table" data-size="6人">
+                            🍽️ ダイニング 6人
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="sofa" data-size="3P">
+                            🛋️ ソファ 3P
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="sofa" data-size="L字">
+                            🛋️ ソファ L字
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="tv" data-size="55型">
+                            📺 TV 55型
+                        </div>
+                        <div class="palette-item" draggable="true" data-unit="tv" data-size="65型">
+                            📺 TV 65型
+                        </div>
+                    </div>
+                </div>
+                <p class="hint">ドラッグしてキャンバスに配置<br>ダブルクリックで回転</p>
+            </div>
+
+            <!-- 配置済みリスト -->
+            <div class="sidebar-section">
+                <h3 class="section-title">配置済み</h3>
+                <div id="placed-list" class="placed-list">
+                    <p class="empty-message">まだ配置されていません</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- キャンバスエリア -->
+        <main class="canvas-area">
+            <div class="canvas-toolbar">
+                <button id="btn-zoom-in" class="toolbar-btn">🔍+</button>
+                <button id="btn-zoom-out" class="toolbar-btn">🔍-</button>
+                <button id="btn-fit" class="toolbar-btn">⬜ フィット</button>
+                <span class="separator"></span>
+                <button id="btn-undo" class="toolbar-btn">↩️ 戻る</button>
+                <button id="btn-delete" class="toolbar-btn">🗑️ 削除</button>
+            </div>
+            <div class="canvas-container">
+                <canvas id="main-canvas"></canvas>
+            </div>
+            <div class="canvas-status">
+                <span id="status-mode">モード: 敷地トレース</span>
+                <span id="status-area">総面積: 0㎡</span>
+                <span id="status-cursor">カーソル: (0, 0)</span>
+            </div>
+        </main>
+    </div>
+
+    <!-- エクスポートモーダル -->
+    <div id="export-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h2>スキーマをエクスポート</h2>
+            <textarea id="export-json" readonly></textarea>
+            <div class="modal-actions">
+                <button id="btn-copy-json" class="btn btn-secondary">📋 コピー</button>
+                <button id="btn-download-json" class="btn btn-primary">💾 ダウンロード</button>
+                <button id="btn-close-modal" class="btn">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="scripts/sales/SalesApp.js"></script>
+</body>
+
+</html>
