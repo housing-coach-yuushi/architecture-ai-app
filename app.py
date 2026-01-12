@@ -208,7 +208,29 @@ st.markdown('<div class="main-header">ishitomo-home AI パース <span style="fo
 st.markdown('<div class="sub-header">手書きスケッチや簡易モデルから、フォトリアルな建築パースを生成します。</div>', unsafe_allow_html=True)
 
 # --- タブの作成 ---
-tab1, tab2 = st.tabs(["🏠 AIパース生成", "🎥 動画生成"])
+# --- タブの作成 ---
+tab1, tab2, tab3 = st.tabs(["🏠 AIパース生成", "🎥 動画生成", "📐 間取り作成"])
+
+# ==========================================
+# Tab 3: 間取り作成
+# ==========================================
+with tab3:
+    st.subheader("📐 間取り作成")
+    st.markdown("""
+    ブラウザで動作する間取り作成ツールです。
+    簡単な操作で平面図を作成し、AIパース生成や3D化に使用できます。
+    """)
+    
+    st.markdown("### ✨ 機能")
+    st.markdown("""
+    - **ドラッグ&ドロップ**で部屋を配置
+    - **ワンクリック**で窓やドアを追加
+    - 作成した間取りを**画像としてダウンロード**して、このAIアプリでパース化可能
+    """)
+    
+    st.link_button("間取り作成アプリを開く (marori app)", "https://blueprint-js-app.vercel.app/sales-mode.html", type="primary")
+    
+    st.info("💡 ヒント: 作成画面で「AIアプリへ送る」ボタンを押すと、画像がダウンロードされ、スムーズにこのアプリに取り込めます。")
 
 # ==========================================
 # Tab 1: AIパース生成
