@@ -58,10 +58,10 @@ def get_webhook_token():
     return None
 
 def get_callback_url(uuid):
-    return f"https://webhook.site/{uuid}"
+    return "" # Webhook removed
 
 def get_poll_url(uuid):
-    return f"https://webhook.site/token/{uuid}/requests"
+    return "" # Webhook removed
 
 # --- Task Execution ---
 def create_kie_task(api_key, payload):
@@ -105,6 +105,24 @@ def create_veo_task(api_key, payload):
 def poll_veo_task(api_key, task_id):
     """Poll status for Veo task."""
     url = f"https://api.kie.ai/api/v1/veo/record-info?taskId={task_id}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    try:
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            data = res.json()
+            if data.get("code") == 200:
+                return data["data"]
+    except:
+        pass
+    return None
+
+def poll_task(api_key, task_id):
+    """Poll task status directly from KIE AI API."""
+    # Note: verified that gpt4o-image endpoint works for polling generically
+    url = f"https://api.kie.ai/api/v1/gpt4o-image/record-info?taskId={task_id}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
