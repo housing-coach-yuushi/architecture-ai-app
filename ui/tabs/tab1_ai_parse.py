@@ -276,6 +276,10 @@ def render_community_gallery():
                     else:
                         st.image(url, use_container_width=True)
                     st.caption(f"{record['engine']}")
+                    
+                    if 'prompt' in record and record['prompt']:
+                        with st.expander("Prompt"):
+                            st.caption(record['prompt'])
                 except: pass
     else:
         st.info("No records found.")
