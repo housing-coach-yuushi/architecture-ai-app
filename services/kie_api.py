@@ -47,21 +47,23 @@ def upload_image_to_kieai(api_key, base64_image):
     return None
 
 def get_webhook_token():
-    """Get a fresh webhook token from webhook.site."""
-    try:
-        res = requests.post("https://webhook.site/token")
-        if res.status_code in [200, 201]:
-            data = res.json()
-            return data["uuid"]
-    except:
-        pass
+    """Get a fresh webhook token from webhook.site with retries."""
+    for i in range(3):
+        try:
+            res = requests.post("https://webhook.site/token", timeout=10)
+            if res.status_code in [200, 201]:
+                data = res.json()
+                return data["uuid"]
+        except Exception as e:
+            print(f"Webhook token fetch error (attempt {i+1}): {e}")
+        time.sleep(1)
     return None
 
 def get_callback_url(uuid):
-    return "" # Webhook removed
+    return f"https://webhook.site/{uuid}"
 
 def get_poll_url(uuid):
-    return "" # Webhook removed
+    return f"https://webhook.site/token/{uuid}/requests"
 
 # --- Task Execution ---
 def create_kie_task(api_key, payload):

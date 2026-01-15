@@ -92,7 +92,14 @@ def render(api_key):
                     if not input_urls:
                          st.stop()
                     
-                    # 2. タスク作成
+                    # 2. Webhook
+                    wh_uuid = kie_api.get_webhook_token()
+                    if not wh_uuid:
+                        st.error("Webhookトークンの取得に失敗しました。再試行してください。")
+                        st.stop()
+                    callback_url = kie_api.get_callback_url(wh_uuid)
+                    
+                    # 3. タスク作成
                     tasks = {} 
                     
                     for img_idx, single_img_url in enumerate(input_urls):
@@ -102,7 +109,7 @@ def render(api_key):
                         if "Nano Banana Pro" in selected_models:
                             tid, msg = kie_api.create_kie_task(api_key, {
                                 "model": "nano-banana-pro",
-                                "callBackUrl": "",
+                                "callBackUrl": callback_url,
                                 "input": {
                                     "prompt": prompt,
                                     "image_input": single_input_list,
@@ -117,7 +124,7 @@ def render(api_key):
                             flux_resolution = "2K" if resolution == "4K" else resolution
                             tid, msg = kie_api.create_kie_task(api_key, {
                                 "model": "flux-2/flex-image-to-image",
-                                "callBackUrl": "",
+                                "callBackUrl": callback_url,
                                 "input": {
                                     "input_urls": single_input_list,
                                     "prompt": prompt,
@@ -132,7 +139,7 @@ def render(api_key):
                             sd_quality = "high" if resolution == "4K" else "basic"
                             tid, msg = kie_api.create_kie_task(api_key, {
                                 "model": "seedream/4.5-edit",
-                                "callBackUrl": "",
+                                "callBackUrl": callback_url,
                                 "input": {
                                     "prompt": prompt,
                                     "image_urls": single_input_list,
@@ -150,7 +157,7 @@ def render(api_key):
                             
                             tid, msg = kie_api.create_kie_task(api_key, {
                                 "model": "gpt-image/1.5-image-to-image",
-                                "callBackUrl": "",
+                                "callBackUrl": callback_url,
                                 "input": {
                                     "input_urls": single_input_list,
                                     "prompt": gpt_prompt,
@@ -165,8 +172,8 @@ def render(api_key):
                         
                     st.toast(f"{len(tasks)}件のタスクを開始しました")
 
-                    # 3. ポーリングループ (Direct API Polling)
-                    poll_loop(api_key, tasks, prompt, col_result)
+                    # 4. ポーリングループ (Webhook Polling)
+                    poll_loop(tasks, wh_uuid, prompt, col_result)
                     
             except Exception as e:
                 st.error(f"システムエラー: {e}")
@@ -179,16 +186,25 @@ def render(api_key):
     st.subheader("🌐 コミュニティギャラリー")
     render_community_gallery()
 
-def poll_loop(api_key, tasks, prompt, container):
-    """Polling logic for tasks using Direct API."""
+def poll_loop(tasks, wh_uuid, prompt, container):
+    """Polling logic for tasks using Webhook."""
     progress_bar = st.progress(0)
     gallery_placeholder = st.empty()
+    poll_url = kie_api.get_poll_url(wh_uuid)
     
     start_time = time.time()
+    next_warning = 30
+    
     while True:
-        if time.time() - start_time > 300:
-            st.error("タイムアウトしました。")
+        elapsed = time.time() - start_time
+        
+        if elapsed > 300:
+            st.error("タイムアウトしました。混雑している可能性があります。")
             break
+        
+        if elapsed > next_warning:
+             st.info(f"処理に時間がかかっています... ({int(elapsed)}秒経過)")
+             next_warning += 30
             
         pending_tasks = [tid for tid, info in tasks.items() if info["status"] == "pending"]
         if not pending_tasks:
@@ -197,37 +213,45 @@ def poll_loop(api_key, tasks, prompt, container):
             break
         
         # update UI
-        elapsed = time.time() - start_time
         progress_bar.progress(min(elapsed / 60, 0.95))
         
-        # Check each pending task
-        for tid in pending_tasks:
-            try:
-                data = kie_api.poll_task(api_key, tid)
-                if data:
-                    state = data.get("state")
-                    if state == "success":
-                        res_url = None
-                        if "resultUrls" in data and data["resultUrls"]:
-                            res_url = data["resultUrls"][0]
-                        elif "resultJson" in data:
-                             try:
-                                 rj = json.loads(data["resultJson"])
-                                 if "resultUrls" in rj: res_url = rj["resultUrls"][0]
-                             except: pass
-                        
-                        if res_url:
-                            tasks[tid]["status"] = "success"
-                            tasks[tid]["result_url"] = res_url
-                            tasks[tid]["image_url"] = res_url
-                            tasks[tid]["label"] = tasks[tid]["engine"]
-                            st.toast(f"{tasks[tid]['engine']} 完了！")
-                            db.save_result(res_url, prompt, tasks[tid]['engine'])
-                    elif state == "fail":
-                        tasks[tid]["status"] = "failed"
-                        tasks[tid]["label"] = tasks[tid]["engine"]
-            except Exception as e:
-                print(f"Error polling task {tid}: {e}")
+        # Fetch webhooks
+        try:
+            res = requests.get(poll_url, timeout=10)
+            if res.status_code == 200:
+                data_list = res.json().get("data", [])
+                for req in data_list:
+                    content = req.get("content")
+                    if content:
+                        try:
+                            body = json.loads(content)
+                            data_body = body.get("data", {})
+                            rec_tid = data_body.get("taskId")
+                            
+                            if rec_tid in tasks and tasks[rec_tid]["status"] == "pending":
+                                state = data_body.get("state")
+                                if state == "success":
+                                    res_url = None
+                                    if "resultUrls" in data_body and data_body["resultUrls"]:
+                                        res_url = data_body["resultUrls"][0]
+                                    elif "resultJson" in data_body:
+                                         rj = json.loads(data_body["resultJson"])
+                                         if "resultUrls" in rj: res_url = rj["resultUrls"][0]
+                                    
+                                    if res_url:
+                                        tasks[rec_tid]["status"] = "success"
+                                        tasks[rec_tid]["result_url"] = res_url
+                                        tasks[rec_tid]["image_url"] = res_url
+                                        tasks[rec_tid]["label"] = tasks[rec_tid]["engine"]
+                                        st.toast(f"{tasks[rec_tid]['engine']} 完了！")
+                                        db.save_result(res_url, prompt, tasks[rec_tid]['engine'])
+                                elif state == "fail":
+                                    tasks[rec_tid]["status"] = "failed"
+                                    tasks[rec_tid]["label"] = tasks[rec_tid]["engine"]
+                        except Exception as e:
+                            print(f"Error parsing polling data: {e}")
+        except Exception as e:
+            print(f"Polling request error (retrying): {e}")
         
         # Render Gallery
         with gallery_placeholder.container():
