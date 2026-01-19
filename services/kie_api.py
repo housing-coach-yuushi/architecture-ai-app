@@ -35,7 +35,7 @@ def upload_image_to_kieai(api_key, base64_image):
         "uploadPath": "temp"
     }
     try:
-        res = requests.post(UPLOAD_URL, headers=headers, json=upload_payload)
+        res = requests.post(UPLOAD_URL, headers=headers, json=upload_payload, timeout=30)
         if res.status_code == 200:
             data = res.json()
             if data.get("success"):
@@ -73,17 +73,22 @@ def create_kie_task(api_key, payload):
         "Authorization": f"Bearer {api_key}"
     }
     try:
-        res = requests.post(CREATE_TASK_URL, headers=headers, json=payload)
+        print(f"[DEBUG] Sending request to {CREATE_TASK_URL}")
+        print(f"[DEBUG] Model: {payload.get('model')}")
+        res = requests.post(CREATE_TASK_URL, headers=headers, json=payload, timeout=30)
+        print(f"[DEBUG] Response status: {res.status_code}")
         if res.status_code == 200:
             data = res.json()
+            print(f"[DEBUG] Response data: {data}")
             if data.get("code") == 200:
                 return data["data"]["taskId"], None
             else:
                 return None, data.get("msg")
         else:
-            return None, f"HTTP {res.status_code}"
+            return None, f"HTTP {res.status_code}: {res.text[:200]}"
     except Exception as e:
-        return None, str(e)
+        print(f"[DEBUG] Exception in create_kie_task: {type(e).__name__}: {e}")
+        return None, f"{type(e).__name__}: {str(e)}"
 
 def create_veo_task(api_key, payload):
     """Create a Veo 3.1 video generation task."""
@@ -92,7 +97,7 @@ def create_veo_task(api_key, payload):
         "Authorization": f"Bearer {api_key}"
     }
     try:
-        res = requests.post(VEO_GEN_URL, headers=headers, json=payload)
+        res = requests.post(VEO_GEN_URL, headers=headers, json=payload, timeout=30)
         if res.status_code != 200:
             return None, f"API Error ({res.status_code}): {res.text}"
         
@@ -112,7 +117,7 @@ def poll_veo_task(api_key, task_id):
         "Authorization": f"Bearer {api_key}"
     }
     try:
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
             if data.get("code") == 200:
@@ -130,7 +135,7 @@ def poll_task(api_key, task_id):
         "Authorization": f"Bearer {api_key}"
     }
     try:
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
             if data.get("code") == 200:

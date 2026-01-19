@@ -74,106 +74,129 @@ def render(api_key):
             st.subheader("3. 結果ギャラリー")
             
             try:
-                with st.spinner('画像を処理してAPIに送信中...'):
-                    # 1. 画像アップロード
-                    input_urls = []
-                    for i, uploaded_file in enumerate(uploaded_files):
+                # 1. 画像アップロード
+                input_urls = []
+                status_container = st.empty()
+
+                for i, uploaded_file in enumerate(uploaded_files):
+                    status_container.info(f"画像 {i+1}/{len(uploaded_files)} を処理中...")
+                    try:
                         image = Image.open(uploaded_file)
-                        image.thumbnail((1024, 1024)) 
+                        image.thumbnail((1024, 1024))
                         base64_image = kie_api.image_to_base64(image)
-                        
+
                         img_url = kie_api.upload_image_to_kieai(api_key, base64_image)
                         if img_url:
                             input_urls.append(img_url)
+                            status_container.success(f"画像 {i+1}/{len(uploaded_files)} アップロード完了")
                         else:
-                            st.error(f"画像のアップロードに失敗しました ({i+1})")
+                            status_container.error(f"画像 {i+1} のアップロードに失敗しました")
                             st.stop()
-                    
-                    if not input_urls:
-                         st.stop()
-                    
-                    # 2. Webhook
-                    wh_uuid = kie_api.get_webhook_token()
-                    if not wh_uuid:
-                        st.error("Webhookトークンの取得に失敗しました。再試行してください。")
+                    except Exception as e:
+                        status_container.error(f"画像 {i+1} の処理中にエラー: {str(e)}")
                         st.stop()
-                    callback_url = kie_api.get_callback_url(wh_uuid)
-                    
-                    # 3. タスク作成
-                    tasks = {} 
-                    
-                    for img_idx, single_img_url in enumerate(input_urls):
-                        img_label = f"#{img_idx + 1}"
-                        single_input_list = [single_img_url]
 
-                        if "Nano Banana Pro" in selected_models:
-                            tid, msg = kie_api.create_kie_task(api_key, {
-                                "model": "nano-banana-pro",
-                                "callBackUrl": callback_url,
-                                "input": {
-                                    "prompt": prompt,
-                                    "image_input": single_input_list,
-                                    "aspect_ratio": aspect_ratio,
-                                    "resolution": resolution,
-                                    "output_format": "png"
-                                }
-                            })
-                            if tid: tasks[tid] = {"engine": f"Nano Banana Pro {img_label}", "status": "pending", "result_url": None}
+                if not input_urls:
+                    st.stop()
 
-                        if "Flux 2 Flex" in selected_models:
-                            flux_resolution = "2K" if resolution == "4K" else resolution
-                            tid, msg = kie_api.create_kie_task(api_key, {
-                                "model": "flux-2/flex-image-to-image",
-                                "callBackUrl": callback_url,
-                                "input": {
-                                    "input_urls": single_input_list,
-                                    "prompt": prompt,
-                                    "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
-                                    "resolution": flux_resolution,
-                                    "strength": strength
-                                }
-                            })
-                            if tid: tasks[tid] = {"engine": f"Flux 2 Flex {img_label}", "status": "pending", "result_url": None}
+                # 2. Webhook
+                status_container.info("Webhookトークンを取得中...")
+                wh_uuid = kie_api.get_webhook_token()
+                if not wh_uuid:
+                    st.error("Webhookトークンの取得に失敗しました。再試行してください。")
+                    st.stop()
+                callback_url = kie_api.get_callback_url(wh_uuid)
+                status_container.success("Webhook準備完了")
 
-                        if "Seedream 4.5 Edit" in selected_models:
-                            sd_quality = "high" if resolution == "4K" else "basic"
-                            tid, msg = kie_api.create_kie_task(api_key, {
-                                "model": "seedream/4.5-edit",
-                                "callBackUrl": callback_url,
-                                "input": {
-                                    "prompt": prompt,
-                                    "image_urls": single_input_list,
-                                    "aspect_ratio": aspect_ratio,
-                                    "quality": sd_quality
-                                }
-                            })
-                            if tid: tasks[tid] = {"engine": f"Seedream 4.5 Edit {img_label}", "status": "pending", "result_url": None}
-                            
-                        if "GPT Image 1.5" in selected_models:
-                            gpt_ar_mapping = {"16:9": "3:2", "9:16": "2:3", "1:1": "1:1", "4:3": "3:2", "3:4": "2:3"}
-                            gpt_aspect = gpt_ar_mapping.get(aspect_ratio, "3:2")
-                            gpt_quality = "high" if resolution == "4K" else "medium"
-                            gpt_prompt = prompt[:1000] if len(prompt) > 1000 else prompt
-                            
-                            tid, msg = kie_api.create_kie_task(api_key, {
-                                "model": "gpt-image/1.5-image-to-image",
-                                "callBackUrl": callback_url,
-                                "input": {
-                                    "input_urls": single_input_list,
-                                    "prompt": gpt_prompt,
-                                    "aspect_ratio": gpt_aspect,
-                                    "quality": gpt_quality
-                                }
-                            })
-                            if tid: tasks[tid] = {"engine": f"GPT Image 1.5 {img_label}", "status": "pending", "result_url": None}
+                # 3. タスク作成
+                tasks = {}
+                status_container.info("AIタスクを作成中...")
 
-                    if not tasks:
-                        st.stop()
-                        
-                    st.toast(f"{len(tasks)}件のタスクを開始しました")
+                for img_idx, single_img_url in enumerate(input_urls):
+                    img_label = f"#{img_idx + 1}"
+                    single_input_list = [single_img_url]
 
-                    # 4. ポーリングループ (Webhook Polling)
-                    poll_loop(tasks, wh_uuid, prompt, col_result)
+                    if "Nano Banana Pro" in selected_models:
+                        tid, msg = kie_api.create_kie_task(api_key, {
+                            "model": "nano-banana-pro",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "prompt": prompt,
+                                "image_input": single_input_list,
+                                "aspect_ratio": aspect_ratio,
+                                "resolution": resolution,
+                                "output_format": "png"
+                            }
+                        })
+                        if tid:
+                            tasks[tid] = {"engine": f"Nano Banana Pro {img_label}", "status": "pending", "result_url": None}
+                        else:
+                            st.warning(f"Nano Banana Pro {img_label} タスク作成失敗: {msg}")
+
+                    if "Flux 2 Flex" in selected_models:
+                        flux_resolution = "2K" if resolution == "4K" else resolution
+                        tid, msg = kie_api.create_kie_task(api_key, {
+                            "model": "flux-2/flex-image-to-image",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "input_urls": single_input_list,
+                                "prompt": prompt,
+                                "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
+                                "resolution": flux_resolution,
+                                "strength": strength
+                            }
+                        })
+                        if tid:
+                            tasks[tid] = {"engine": f"Flux 2 Flex {img_label}", "status": "pending", "result_url": None}
+                        else:
+                            st.warning(f"Flux 2 Flex {img_label} タスク作成失敗: {msg}")
+
+                    if "Seedream 4.5 Edit" in selected_models:
+                        sd_quality = "high" if resolution == "4K" else "basic"
+                        tid, msg = kie_api.create_kie_task(api_key, {
+                            "model": "seedream/4.5-edit",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "prompt": prompt,
+                                "image_urls": single_input_list,
+                                "aspect_ratio": aspect_ratio,
+                                "quality": sd_quality
+                            }
+                        })
+                        if tid:
+                            tasks[tid] = {"engine": f"Seedream 4.5 Edit {img_label}", "status": "pending", "result_url": None}
+                        else:
+                            st.warning(f"Seedream 4.5 Edit {img_label} タスク作成失敗: {msg}")
+
+                    if "GPT Image 1.5" in selected_models:
+                        gpt_ar_mapping = {"16:9": "3:2", "9:16": "2:3", "1:1": "1:1", "4:3": "3:2", "3:4": "2:3"}
+                        gpt_aspect = gpt_ar_mapping.get(aspect_ratio, "3:2")
+                        gpt_quality = "high" if resolution == "4K" else "medium"
+                        gpt_prompt = prompt[:1000] if len(prompt) > 1000 else prompt
+
+                        tid, msg = kie_api.create_kie_task(api_key, {
+                            "model": "gpt-image/1.5-image-to-image",
+                            "callBackUrl": callback_url,
+                            "input": {
+                                "input_urls": single_input_list,
+                                "prompt": gpt_prompt,
+                                "aspect_ratio": gpt_aspect,
+                                "quality": gpt_quality
+                            }
+                        })
+                        if tid:
+                            tasks[tid] = {"engine": f"GPT Image 1.5 {img_label}", "status": "pending", "result_url": None}
+                        else:
+                            st.warning(f"GPT Image 1.5 {img_label} タスク作成失敗: {msg}")
+
+                if not tasks:
+                    st.stop()
+
+                status_container.success(f"{len(tasks)}件のタスクを開始しました")
+                st.toast(f"{len(tasks)}件のタスクを開始しました")
+
+                # 4. ポーリングループ (Webhook Polling)
+                poll_loop(tasks, wh_uuid, prompt, col_result)
                     
             except Exception as e:
                 st.error(f"システムエラー: {e}")
