@@ -146,6 +146,17 @@ class SalesApp {
             this.clearSite();
         });
 
+        // 敷地寸法入力
+        document.getElementById('btn-apply-site-rect').addEventListener('click', () => {
+            const width = parseFloat(document.getElementById('site-width').value);
+            const depth = parseFloat(document.getElementById('site-depth').value);
+            if (!isNaN(width) && !isNaN(depth) && width > 0 && depth > 0) {
+                this.siteEditor.setRectSite(width, depth);
+            } else {
+                alert('有効な数値を入力してください');
+            }
+        });
+
         // グリッド変更
         document.getElementById('grid-module').addEventListener('change', (e) => {
             this.schema.grid.module = parseInt(e.target.value);
@@ -202,8 +213,14 @@ class SalesApp {
         });
 
         // ツールバー
-        document.getElementById('btn-zoom-in').addEventListener('click', () => this.renderer.zoomIn());
-        document.getElementById('btn-zoom-out').addEventListener('click', () => this.renderer.zoomOut());
+        document.getElementById('btn-zoom-in').addEventListener('click', () => {
+            this.renderer.zoomIn();
+            this.render();
+        });
+        document.getElementById('btn-zoom-out').addEventListener('click', () => {
+            this.renderer.zoomOut();
+            this.render();
+        });
         document.getElementById('btn-fit').addEventListener('click', () => this.fitView());
         document.getElementById('btn-undo').addEventListener('click', () => this.undo());
         document.getElementById('btn-delete').addEventListener('click', () => this.deleteSelected());

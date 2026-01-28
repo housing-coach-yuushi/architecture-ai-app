@@ -39,7 +39,7 @@ export class CanvasRenderer {
     zoomIn(centerX, centerY) {
         const oldScale = this.scale;
         this.scale *= 1.2;
-        if (this.scale > 500) this.scale = 500;
+        if (this.scale > 800) this.scale = 800;
 
         if (centerX !== undefined && centerY !== undefined) {
             // 指定座標を中心にズーム
@@ -54,7 +54,7 @@ export class CanvasRenderer {
     zoomOut(centerX, centerY) {
         const oldScale = this.scale;
         this.scale /= 1.2;
-        if (this.scale < 5) this.scale = 5;
+        if (this.scale < 2) this.scale = 2;
 
         if (centerX !== undefined && centerY !== undefined) {
             // 指定座標を中心にズーム
@@ -118,14 +118,12 @@ export class CanvasRenderer {
         if (!gridConfig.visible) return;
 
         const moduleM = gridConfig.module / 1000; // mm → m
-        const gridSize = moduleM * this.scale;
 
         // ビューポートの範囲をワールド座標で計算
         const topLeft = this.screenToWorld(0, 0);
         const bottomRight = this.screenToWorld(this.width, this.height);
 
         // グリッドの開始・終了範囲を計算（モジュール単位）
-        // Y軸は反転しているので topLeft.y が上、bottomRight.y が下
         const startX = Math.floor(topLeft.x / moduleM) * moduleM;
         const endX = Math.ceil(bottomRight.x / moduleM) * moduleM;
         const startY = Math.floor(bottomRight.y / moduleM) * moduleM;
@@ -134,8 +132,9 @@ export class CanvasRenderer {
         this.ctx.strokeStyle = '#e2e8f0';
         this.ctx.lineWidth = 1;
 
-        // 縦線
-        for (let gx = startX; gx <= endX; gx += moduleM) {
+        // 縦線 (浮動小数点の累積誤差を避けるため整数のインデックスで回すのが理想だが、ここでは余裕を持たせた終了条件にする)
+        const eps = moduleM * 0.001;
+        for (let gx = startX; gx <= endX + eps; gx += moduleM) {
             const screen = this.worldToScreen(gx, 0);
             this.ctx.beginPath();
             this.ctx.moveTo(screen.x, 0);
@@ -144,7 +143,7 @@ export class CanvasRenderer {
         }
 
         // 横線
-        for (let gy = startY; gy <= endY; gy += moduleM) {
+        for (let gy = startY; gy <= endY + eps; gy += moduleM) {
             const screen = this.worldToScreen(0, gy);
             this.ctx.beginPath();
             this.ctx.moveTo(0, screen.y);
