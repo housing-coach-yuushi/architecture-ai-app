@@ -36,17 +36,39 @@ export class CanvasRenderer {
     /**
      * ズームイン
      */
-    zoomIn() {
+    zoomIn(centerX, centerY) {
+        const oldScale = this.scale;
         this.scale *= 1.2;
-        if (this.scale > 200) this.scale = 200;
+        if (this.scale > 500) this.scale = 500;
+
+        if (centerX !== undefined && centerY !== undefined) {
+            // 指定座標を中心にズーム
+            this.offsetX -= (centerX - this.offsetX) * (this.scale / oldScale - 1);
+            this.offsetY -= (centerY - this.offsetY) * (this.scale / oldScale - 1);
+        }
     }
 
     /**
      * ズームアウト
      */
-    zoomOut() {
+    zoomOut(centerX, centerY) {
+        const oldScale = this.scale;
         this.scale /= 1.2;
-        if (this.scale < 10) this.scale = 10;
+        if (this.scale < 5) this.scale = 5;
+
+        if (centerX !== undefined && centerY !== undefined) {
+            // 指定座標を中心にズーム
+            this.offsetX -= (centerX - this.offsetX) * (this.scale / oldScale - 1);
+            this.offsetY -= (centerY - this.offsetY) * (this.scale / oldScale - 1);
+        }
+    }
+
+    /**
+     * パン（平行移動）
+     */
+    pan(dx, dy) {
+        this.offsetX += dx;
+        this.offsetY += dy;
     }
 
     /**
@@ -98,26 +120,35 @@ export class CanvasRenderer {
         const moduleM = gridConfig.module / 1000; // mm → m
         const gridSize = moduleM * this.scale;
 
-        // 表示範囲内のグリッド線のみ描画
-        const startX = -Math.ceil(this.offsetX / gridSize) * gridSize + this.offsetX % gridSize;
-        const startY = -Math.ceil(this.offsetY / gridSize) * gridSize + this.offsetY % gridSize;
+        // ビューポートの範囲をワールド座標で計算
+        const topLeft = this.screenToWorld(0, 0);
+        const bottomRight = this.screenToWorld(this.width, this.height);
+
+        // グリッドの開始・終了範囲を計算（モジュール単位）
+        // Y軸は反転しているので topLeft.y が上、bottomRight.y が下
+        const startX = Math.floor(topLeft.x / moduleM) * moduleM;
+        const endX = Math.ceil(bottomRight.x / moduleM) * moduleM;
+        const startY = Math.floor(bottomRight.y / moduleM) * moduleM;
+        const endY = Math.ceil(topLeft.y / moduleM) * moduleM;
 
         this.ctx.strokeStyle = '#e2e8f0';
         this.ctx.lineWidth = 1;
 
         // 縦線
-        for (let x = startX; x < this.width; x += gridSize) {
+        for (let gx = startX; gx <= endX; gx += moduleM) {
+            const screen = this.worldToScreen(gx, 0);
             this.ctx.beginPath();
-            this.ctx.moveTo(x, 0);
-            this.ctx.lineTo(x, this.height);
+            this.ctx.moveTo(screen.x, 0);
+            this.ctx.lineTo(screen.x, this.height);
             this.ctx.stroke();
         }
 
         // 横線
-        for (let y = startY; y < this.height; y += gridSize) {
+        for (let gy = startY; gy <= endY; gy += moduleM) {
+            const screen = this.worldToScreen(0, gy);
             this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.width, y);
+            this.ctx.moveTo(0, screen.y);
+            this.ctx.lineTo(this.width, screen.y);
             this.ctx.stroke();
         }
 
@@ -746,7 +777,8 @@ export class CanvasRenderer {
             const pos = this.worldToScreen(opening.position[0], opening.position[1]);
             const widthPx = opening.width * this.scale;
             const isSelected = selectedItem?.type === 'opening' && selectedItem?.id === opening.id;
-            const isWindow = opening.category === 'window';
+            // シンプル化: type フィールドを直接使用 (後方互換性のためcategoryもチェック)
+            const isWindow = opening.type === 'window' || opening.category === 'window';
 
             // 色設定
             const color = isWindow ? '#2196F3' : '#8D6E63';

@@ -48,6 +48,8 @@ class SalesApp {
         this.schema = this.createEmptySchema();
         this.selectedItem = null;
         this.undoStack = [];
+        this.isPanning = false;
+        this.lastMousePos = { x: 0, y: 0 };
 
         // コンポーネント初期化
         this.initCanvas();
@@ -165,6 +167,18 @@ class SalesApp {
         this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
         this.canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e));
 
+        // マウスホイールによるズーム
+        this.canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const pos = this.getCanvasPosition(e);
+            if (e.deltaY < 0) {
+                this.renderer.zoomIn(pos.x, pos.y);
+            } else {
+                this.renderer.zoomOut(pos.x, pos.y);
+            }
+            this.render();
+        }, { passive: false });
+
         // ドラッグ&ドロップ
         this.canvas.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -258,6 +272,15 @@ class SalesApp {
      */
     onMouseDown(e) {
         const pos = this.getCanvasPosition(e);
+        this.lastMousePos = pos;
+
+        // 中ボタン(button:1) または Altキー+左ボタン でパン開始
+        if (e.button === 1 || (e.button === 0 && e.altKey)) {
+            this.isPanning = true;
+            this.canvas.style.cursor = 'grabbing';
+            return;
+        }
+
         const worldPos = this.renderer.screenToWorld(pos.x, pos.y);
 
         if (this.currentMode === 'site') {
@@ -298,6 +321,15 @@ class SalesApp {
     onMouseMove(e) {
         const pos = this.getCanvasPosition(e);
 
+        if (this.isPanning) {
+            const dx = pos.x - this.lastMousePos.x;
+            const dy = pos.y - this.lastMousePos.y;
+            this.renderer.pan(dx, dy);
+            this.lastMousePos = pos;
+            this.render();
+            return;
+        }
+
         // カーソル位置表示
         const worldPos = this.renderer.screenToWorld(pos.x, pos.y);
         document.getElementById('status-cursor').textContent =
@@ -318,12 +350,19 @@ class SalesApp {
         }
 
         this.render();
+        this.lastMousePos = pos;
     }
 
     /**
      * マウスアップ
      */
     onMouseUp(e) {
+        if (this.isPanning) {
+            this.isPanning = false;
+            this.canvas.style.cursor = this.currentMode === 'site' ? 'crosshair' : 'default';
+            return;
+        }
+
         const pos = this.getCanvasPosition(e);
 
         if (this.currentMode === 'room') {
@@ -603,19 +642,21 @@ class SalesApp {
         // 壁にスナップ
         const snapped = this.openingPlacer.snapToWall(position.x, position.y, { width: openingWidth, rotation: 0 });
 
+        // シンプルで明確な構造 (FreeCAD互換)
         const opening = {
-            id: `opening_${openingType}_${Date.now()}`,
-            opening_type: openingType,
-            category: isWindow ? 'window' : 'door',
+            id: `opening_${Date.now()}`,
+            type: isWindow ? 'window' : 'door',  // シンプル化: 'window' | 'door'
+            position: [snapped.x, snapped.y],
             width: openingWidth,
             height: height || (isWindow ? 1.1 : 2.0),
-            position: [snapped.x, snapped.y],
             rotation: snapped.rotation || 0,
         };
 
         this.saveState();
         this.schema.openings.push(opening);
         this.updatePlacedList();
+
+        console.log('Opening added:', opening);
     }
 
     /**
