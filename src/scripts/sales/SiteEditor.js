@@ -59,6 +59,7 @@ export class SiteEditor {
         if (this.app.schema.site.polygon.length >= 3) {
             this.isDrawing = false;
             this.tempPoints = [];
+            this.app.updateTotalArea();
             console.log('Site finished:', this.app.schema.site.polygon);
         }
     }
@@ -80,6 +81,7 @@ export class SiteEditor {
 
         this.isDrawing = false;
         this.tempPoints = [];
+        this.app.updateTotalArea();
         this.app.render();
     }
 }

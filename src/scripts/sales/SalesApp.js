@@ -683,6 +683,7 @@ class SalesApp {
         this.saveState();
         this.schema.site.polygon = [];
         this.siteEditor.reset();
+        this.updateTotalArea();
         this.render();
     }
 
@@ -881,8 +882,19 @@ class SalesApp {
      * 総面積更新
      */
     updateTotalArea() {
-        const total = this.schema.rooms.reduce((sum, room) => sum + room.target_area, 0);
-        document.getElementById('status-area').textContent = `総面積: ${total}㎡`;
+        // 部屋の合計面積
+        const roomsTotal = this.schema.rooms.reduce((sum, room) => sum + (room.target_area || 0), 0);
+
+        // 敷地の面積
+        let siteArea = 0;
+        if (this.schema.site.polygon && this.schema.site.polygon.length >= 3) {
+            siteArea = this.calculatePolygonArea(this.schema.site.polygon);
+        }
+
+        const roomsText = `延床面積: ${roomsTotal.toFixed(1)}㎡`;
+        const siteText = siteArea > 0 ? ` / 敷地面積: ${siteArea.toFixed(1)}㎡` : '';
+
+        document.getElementById('status-area').textContent = `${roomsText}${siteText}`;
     }
 
     /**

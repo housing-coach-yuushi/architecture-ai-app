@@ -38,7 +38,7 @@ export class CanvasRenderer {
      */
     zoomIn(centerX, centerY) {
         const oldScale = this.scale;
-        this.scale *= 1.2;
+        this.scale *= 1.5;
         if (this.scale > 800) this.scale = 800;
 
         if (centerX !== undefined && centerY !== undefined) {
@@ -53,7 +53,7 @@ export class CanvasRenderer {
      */
     zoomOut(centerX, centerY) {
         const oldScale = this.scale;
-        this.scale /= 1.2;
+        this.scale /= 1.5;
         if (this.scale < 2) this.scale = 2;
 
         if (centerX !== undefined && centerY !== undefined) {
