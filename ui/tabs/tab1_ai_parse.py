@@ -57,8 +57,8 @@ def render(api_key):
         aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
         
         # モデル選択
-        model_options = ["Nano Banana Pro", "Flux 2 Flex", "Seedream 4.5 Edit", "GPT Image 1.5"]
-        selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Seedream 4.5 Edit", "Nano Banana Pro", "Flux 2 Flex"])
+        model_options = ["Nano Banana Pro", "GPT Image 1.5"]
+        selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Nano Banana Pro", "GPT Image 1.5"])
         
         st.info(f"ℹ️ 選択された {len(selected_models)} つのエンジンで同時に生成します。")
 
@@ -132,41 +132,6 @@ def render(api_key):
                             tasks[tid] = {"engine": f"Nano Banana Pro {img_label}", "status": "pending", "result_url": None}
                         else:
                             st.warning(f"Nano Banana Pro {img_label} タスク作成失敗: {msg}")
-
-                    if "Flux 2 Flex" in selected_models:
-                        flux_resolution = "2K" if resolution == "4K" else resolution
-                        tid, msg = kie_api.create_kie_task(api_key, {
-                            "model": "flux-2/flex-image-to-image",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "input_urls": single_input_list,
-                                "prompt": prompt,
-                                "aspect_ratio": aspect_ratio if aspect_ratio != "auto" else "1:1",
-                                "resolution": flux_resolution,
-                                "strength": strength
-                            }
-                        })
-                        if tid:
-                            tasks[tid] = {"engine": f"Flux 2 Flex {img_label}", "status": "pending", "result_url": None}
-                        else:
-                            st.warning(f"Flux 2 Flex {img_label} タスク作成失敗: {msg}")
-
-                    if "Seedream 4.5 Edit" in selected_models:
-                        sd_quality = "high" if resolution == "4K" else "basic"
-                        tid, msg = kie_api.create_kie_task(api_key, {
-                            "model": "seedream/4.5-edit",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "prompt": prompt,
-                                "image_urls": single_input_list,
-                                "aspect_ratio": aspect_ratio,
-                                "quality": sd_quality
-                            }
-                        })
-                        if tid:
-                            tasks[tid] = {"engine": f"Seedream 4.5 Edit {img_label}", "status": "pending", "result_url": None}
-                        else:
-                            st.warning(f"Seedream 4.5 Edit {img_label} タスク作成失敗: {msg}")
 
                     if "GPT Image 1.5" in selected_models:
                         gpt_ar_mapping = {"16:9": "3:2", "9:16": "2:3", "1:1": "1:1", "4:3": "3:2", "3:4": "2:3"}
