@@ -52,7 +52,7 @@ def render(api_key):
         with col1:
             strength = st.slider("プロンプトの影響度 (Strength)", 0.0, 1.0, 0.55, help="0に近いほど元画像に忠実、1に近いほどプロンプト重視")
         with col2:
-            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K", "4K"], index=0, help="Seedream / Nano Banana Pro / Flux 2")
+            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K", "4K"], index=0, help="Nano Banana Pro / GPT Image 1.5")
         
         aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
         
