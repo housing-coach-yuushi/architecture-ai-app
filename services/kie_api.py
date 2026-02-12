@@ -10,6 +10,7 @@ from PIL import Image
 CREATE_TASK_URL = "https://api.kie.ai/api/v1/jobs/createTask"
 UPLOAD_URL = "https://kieai.redpandaai.co/api/file-base64-upload"
 VEO_GEN_URL = "https://api.kie.ai/api/v1/veo/generate"
+JOBS_RECORD_INFO_URL = "https://api.kie.ai/api/v1/jobs/recordInfo"
 
 # --- Image Processing ---
 def image_to_base64(image):
@@ -143,3 +144,70 @@ def poll_task(api_key, task_id):
     except:
         pass
     return None
+
+def create_kling3_video_task(api_key, input_payload, callback_url=None):
+    """Create a Kling 3.0 video generation task."""
+    payload = {
+        "model": "kling-3.0/video",
+        "input": input_payload
+    }
+    if callback_url:
+        payload["callBackUrl"] = callback_url
+    return create_kie_task(api_key, payload)
+
+def poll_job_record(api_key, task_id):
+    """Poll generic KIE jobs record-info endpoint."""
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    url = f"{JOBS_RECORD_INFO_URL}?taskId={task_id}"
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        if res.status_code != 200:
+            return None, f"HTTP {res.status_code}: {res.text[:200]}"
+        body = res.json()
+        if body.get("code") != 200:
+            return None, body.get("msg", "Unknown API error")
+        return body.get("data", {}), None
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
+
+def extract_result_urls(task_data):
+    """Normalize result URLs from task payload variations."""
+    if not isinstance(task_data, dict):
+        return []
+
+    urls = []
+    raw_result_json = task_data.get("resultJson")
+    if isinstance(raw_result_json, str) and raw_result_json.strip():
+        try:
+            parsed = json.loads(raw_result_json)
+            parsed_urls = parsed.get("resultUrls")
+            if isinstance(parsed_urls, list):
+                urls.extend([u for u in parsed_urls if isinstance(u, str) and u.strip()])
+            elif isinstance(parsed_urls, str) and parsed_urls.strip():
+                urls.append(parsed_urls)
+        except Exception:
+            pass
+
+    direct_urls = task_data.get("resultUrls")
+    if isinstance(direct_urls, list):
+        urls.extend([u for u in direct_urls if isinstance(u, str) and u.strip()])
+    elif isinstance(direct_urls, str) and direct_urls.strip():
+        try:
+            parsed_direct = json.loads(direct_urls)
+            if isinstance(parsed_direct, list):
+                urls.extend([u for u in parsed_direct if isinstance(u, str) and u.strip()])
+            else:
+                urls.append(direct_urls)
+        except Exception:
+            urls.append(direct_urls)
+
+    deduped = []
+    seen = set()
+    for url in urls:
+        if url not in seen:
+            seen.add(url)
+            deduped.append(url)
+    return deduped
