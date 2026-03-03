@@ -52,13 +52,13 @@ def render(api_key):
         with col1:
             strength = st.slider("プロンプトの影響度 (Strength)", 0.0, 1.0, 0.55, help="0に近いほど元画像に忠実、1に近いほどプロンプト重視")
         with col2:
-            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K", "4K"], index=0, help="Nano Banana Pro / GPT Image 1.5")
+            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K", "4K"], index=0, help="Nano Banana 2 / GPT Image 1.5")
         
         aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
         
         # モデル選択
-        model_options = ["Nano Banana Pro", "GPT Image 1.5"]
-        selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Nano Banana Pro", "GPT Image 1.5"])
+        model_options = ["Nano Banana 2", "GPT Image 1.5"]
+        selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Nano Banana 2", "GPT Image 1.5"])
         
         st.info(f"ℹ️ 選択された {len(selected_models)} つのエンジンで同時に生成します。")
 
@@ -116,22 +116,23 @@ def render(api_key):
                     img_label = f"#{img_idx + 1}"
                     single_input_list = [single_img_url]
 
-                    if "Nano Banana Pro" in selected_models:
+                    if "Nano Banana 2" in selected_models:
                         tid, msg = kie_api.create_kie_task(api_key, {
-                            "model": "nano-banana-pro",
+                            "model": "nano-banana-2",
                             "callBackUrl": callback_url,
                             "input": {
                                 "prompt": prompt,
                                 "image_input": single_input_list,
                                 "aspect_ratio": aspect_ratio,
+                                "google_search": False,
                                 "resolution": resolution,
                                 "output_format": "png"
                             }
                         })
                         if tid:
-                            tasks[tid] = {"engine": f"Nano Banana Pro {img_label}", "status": "pending", "result_url": None}
+                            tasks[tid] = {"engine": f"Nano Banana 2 {img_label}", "status": "pending", "result_url": None}
                         else:
-                            st.warning(f"Nano Banana Pro {img_label} タスク作成失敗: {msg}")
+                            st.warning(f"Nano Banana 2 {img_label} タスク作成失敗: {msg}")
 
                     if "GPT Image 1.5" in selected_models:
                         gpt_ar_mapping = {"16:9": "3:2", "9:16": "2:3", "1:1": "1:1", "4:3": "3:2", "3:4": "2:3"}

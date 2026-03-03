@@ -41,9 +41,9 @@ resolution = "1K"
 # 3. Payloads
 tasks_to_start = []
 
-# Nano Banana Pro
-tasks_to_start.append(("Nano Banana Pro", {
-    "model": "nano-banana-pro",
+# Nano Banana 2
+tasks_to_start.append(("Nano Banana 2", {
+    "model": "nano-banana-2",
     "input": {
         "prompt": prompt,
         "image_input": [test_image_url],
