@@ -5,7 +5,6 @@ import json
 from PIL import Image
 from services import kie_api
 from ui import components
-import db
 
 def render(api_key):
     """Render Tab 1: AI Parse Generation"""
@@ -233,7 +232,6 @@ def poll_loop(tasks, wh_uuid, prompt, container):
                                         tasks[rec_tid]["image_url"] = res_url
                                         tasks[rec_tid]["label"] = tasks[rec_tid]["engine"]
                                         st.toast(f"{tasks[rec_tid]['engine']} 完了！")
-                                        db.save_result(res_url, prompt, tasks[rec_tid]['engine'])
                                 elif state == "fail":
                                     tasks[rec_tid]["status"] = "failed"
                                     tasks[rec_tid]["label"] = tasks[rec_tid]["engine"]
@@ -249,26 +247,4 @@ def poll_loop(tasks, wh_uuid, prompt, container):
         time.sleep(3)
 
 def render_community_gallery():
-    if not db.get_connection():
-         st.warning("DB未接続のためギャラリーは表示されません")
-         return
-         
-    recent_results = db.get_recent_results(limit=50) # This will be cached later
-    if recent_results:
-        cols = st.columns(4)
-        for idx, record in enumerate(recent_results):
-            with cols[idx % 4]:
-                try:
-                    url = record['image_url']
-                    if url and (url.endswith(".mp4") or url.endswith(".mov")):
-                        st.video(url)
-                    else:
-                        st.image(url, use_container_width=True)
-                    st.caption(f"{record['engine']}")
-                    
-                    if 'prompt' in record and record['prompt']:
-                        with st.expander("Prompt"):
-                            st.caption(record['prompt'])
-                except: pass
-    else:
-        st.info("No records found.")
+    st.info("現在コミュニティギャラリーは一時停止中です。画像生成はそのまま利用できます。")
