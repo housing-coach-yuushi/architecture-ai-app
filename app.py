@@ -1,4 +1,5 @@
 import streamlit as st
+import db
 from ui import components
 from ui.tabs import tab1_ai_parse, tab2_video
 
