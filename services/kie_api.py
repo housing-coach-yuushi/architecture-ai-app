@@ -41,6 +41,8 @@ def upload_image_to_kieai(api_key, base64_image):
             data = res.json()
             if data.get("success"):
                 return data["data"]["downloadUrl"]
+            error_msg = data.get("msg") or data.get("message") or json.dumps(data, ensure_ascii=False)[:300]
+            st.error(f"KIE画像アップロード失敗: {error_msg}")
         else:
             st.error(f"Upload failed: {res.status_code} - {res.text}")
     except Exception as e:
