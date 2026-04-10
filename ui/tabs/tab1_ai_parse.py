@@ -1,23 +1,18 @@
-import streamlit as st
-import time
-import requests
 import json
+import time
+
+import requests
+import streamlit as st
 from PIL import Image
+
+import db
 from services import kie_api
 from ui import components
-import db
+
 
 def render(api_key):
-    """Render Tab 1: AI Parse Generation"""
-    col_input, col_result = st.columns([1, 1])
-
-    with col_input:
-        st.subheader("1. 画像アップロード")
-        uploaded_files = st.file_uploader("下絵となる画像をアップロードしてください (複数可)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
-        
-        # プロンプト設定
-        st.subheader("2. 設定")
-        default_prompt = """添付の建築パースをフォトリアルにしてください。
+    """Render Tab 1: AI Parse Generation."""
+    default_prompt = """添付の建築パースをフォトリアルにしてください。
 建物の形状・構成・アングル・奥行・カメラ位置・パースラインは絶対に変更しないでください。
 素材・質感・光の表現だけを実写に寄せてください。
 
@@ -41,170 +36,254 @@ def render(api_key):
 建物の形状や寸法感が変わるような解釈は絶対にしないでください。
 元画像の輪郭線と構造はそのまま、質感だけを高精細フォトリアルに仕上げてください。"""
 
-        prompt = st.text_area(
-            "プロンプト (どのような建物にしたいか)", 
-            value=default_prompt,
-            height=300
-        )
-        
-        # パラメータ設定
-        col1, col2 = st.columns(2)
-        with col1:
-            strength = st.slider("プロンプトの影響度 (Strength)", 0.0, 1.0, 0.55, help="0に近いほど元画像に忠実、1に近いほどプロンプト重視")
-        with col2:
-            resolution = st.selectbox("解像度 (Resolution)", ["1K", "2K", "4K"], index=0, help="Nano Banana 2 / GPT Image 1.5")
-        
-        aspect_ratio = st.selectbox("アスペクト比", ["16:9", "1:1", "9:16", "4:3", "3:4"], index=0)
-        
-        # モデル選択
-        model_options = ["Nano Banana 2", "GPT Image 1.5"]
-        selected_models = st.multiselect("使用するモデル (複数選択可)", model_options, default=["Nano Banana 2", "GPT Image 1.5"])
-        
-        st.info(f"ℹ️ 選択された {len(selected_models)} つのエンジンで同時に生成します。")
+    st.markdown(
+        """
+        <div class="panel-note">
+            <strong>X公開向けの見せ方に寄せたUIです</strong>
+            <span>
+                入力と結果を左右に分けて、ファーストビューだけで「何をすると」「何が返るか」が伝わる構成にしています。
+                初期プロンプトは、輪郭固定のまま質感だけを上げる用途に最適化しています。
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        run_button = st.button("パースを生成する", type="primary")
+    col_input, col_result = st.columns([1.05, 0.95], gap="large")
 
-    # --- 実行処理 ---
+    with col_input:
+        with st.container(border=True):
+            st.markdown('<div class="section-kicker">01 / Input</div>', unsafe_allow_html=True)
+            st.markdown("### 元画像と条件をセット")
+            st.caption("最初の1枚だけでも開始できます。複数枚を入れると案の比較がしやすくなります。")
+
+            uploaded_files = st.file_uploader(
+                "下絵となる画像をアップロードしてください (複数可)",
+                type=["jpg", "png", "jpeg"],
+                accept_multiple_files=True,
+            )
+
+            st.markdown(
+                """
+                <div class="panel-note">
+                    <strong>初期プロンプトの狙い</strong>
+                    <span>
+                        建物の形状・アングル・パースは固定しつつ、外壁・ガラス・道路・光の質感だけをフォトリアル側へ寄せる設定です。
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("#### プロンプト")
+            prompt = st.text_area(
+                "プロンプト (どのような建物にしたいか)",
+                value=default_prompt,
+                height=260,
+            )
+
+            st.markdown("#### 出力設定")
+            setting_col1, setting_col2 = st.columns(2, gap="medium")
+            with setting_col1:
+                resolution = st.selectbox(
+                    "解像度 (Resolution)",
+                    ["1K", "2K", "4K"],
+                    index=0,
+                    help="Nano Banana 2 / GPT Image 1.5",
+                )
+            with setting_col2:
+                aspect_ratio = st.selectbox(
+                    "アスペクト比",
+                    ["16:9", "1:1", "9:16", "4:3", "3:4"],
+                    index=0,
+                )
+
+            model_options = ["Nano Banana 2", "GPT Image 1.5"]
+            selected_models = st.multiselect(
+                "使用するモデル (複数選択可)",
+                model_options,
+                default=["Nano Banana 2", "GPT Image 1.5"],
+            )
+
+            st.markdown(
+                f'<div class="muted-note">同時生成: {len(selected_models)} エンジン。比較しやすいので、基本は両方ONのままがおすすめです。</div>',
+                unsafe_allow_html=True,
+            )
+            run_button = st.button("パースを生成する", type="primary", use_container_width=True)
+
+    with col_result:
+        with st.container(border=True):
+            st.markdown('<div class="section-kicker">02 / Output</div>', unsafe_allow_html=True)
+            st.markdown("### 結果プレビュー")
+            st.markdown(
+                '<div class="gallery-heading">生成を開始すると、進行状況と各エンジンの結果がここに表示されます。Xに出す前の比較・選定までこの画面で完結します。</div>',
+                unsafe_allow_html=True,
+            )
+            if not run_button:
+                components.render_result_placeholder()
+
     if run_button and uploaded_files:
         if not api_key:
-            st.error("KIEAI API Keyが必要です。")
+            with col_result:
+                st.error("KIEAI API Keyが必要です。")
             st.stop()
 
         with col_result:
-            st.subheader("3. 結果ギャラリー")
-            
-            try:
-                # 1. 画像アップロード
-                input_urls = []
-                status_container = st.empty()
+            with st.container(border=True):
+                st.markdown('<div class="section-kicker">02 / Output</div>', unsafe_allow_html=True)
+                st.markdown("### 結果プレビュー")
 
-                for i, uploaded_file in enumerate(uploaded_files):
-                    status_container.info(f"画像 {i+1}/{len(uploaded_files)} を処理中...")
-                    try:
-                        image = Image.open(uploaded_file)
-                        image.thumbnail((1024, 1024))
-                        base64_image = kie_api.image_to_base64(image)
+                try:
+                    input_urls = []
+                    status_container = st.empty()
 
-                        img_url = kie_api.upload_image_to_kieai(api_key, base64_image)
-                        if img_url:
-                            input_urls.append(img_url)
-                            status_container.success(f"画像 {i+1}/{len(uploaded_files)} アップロード完了")
-                        else:
-                            status_container.error(f"画像 {i+1} のアップロードに失敗しました")
+                    for i, uploaded_file in enumerate(uploaded_files):
+                        status_container.info(f"画像 {i + 1}/{len(uploaded_files)} を処理中...")
+                        try:
+                            image = Image.open(uploaded_file)
+                            image.thumbnail((1024, 1024))
+                            base64_image = kie_api.image_to_base64(image)
+
+                            img_url = kie_api.upload_image_to_kieai(api_key, base64_image)
+                            if img_url:
+                                input_urls.append(img_url)
+                                status_container.success(f"画像 {i + 1}/{len(uploaded_files)} アップロード完了")
+                            else:
+                                status_container.error(f"画像 {i + 1} のアップロードに失敗しました")
+                                st.stop()
+                        except Exception as e:
+                            status_container.error(f"画像 {i + 1} の処理中にエラー: {str(e)}")
                             st.stop()
-                    except Exception as e:
-                        status_container.error(f"画像 {i+1} の処理中にエラー: {str(e)}")
+
+                    if not input_urls:
                         st.stop()
 
-                if not input_urls:
-                    st.stop()
+                    status_container.info("Webhookトークンを取得中...")
+                    wh_uuid = kie_api.get_webhook_token()
+                    if not wh_uuid:
+                        st.error("Webhookトークンの取得に失敗しました。再試行してください。")
+                        st.stop()
+                    callback_url = kie_api.get_callback_url(wh_uuid)
+                    status_container.success("Webhook準備完了")
 
-                # 2. Webhook
-                status_container.info("Webhookトークンを取得中...")
-                wh_uuid = kie_api.get_webhook_token()
-                if not wh_uuid:
-                    st.error("Webhookトークンの取得に失敗しました。再試行してください。")
-                    st.stop()
-                callback_url = kie_api.get_callback_url(wh_uuid)
-                status_container.success("Webhook準備完了")
+                    tasks = {}
+                    status_container.info("AIタスクを作成中...")
 
-                # 3. タスク作成
-                tasks = {}
-                status_container.info("AIタスクを作成中...")
+                    for img_idx, single_img_url in enumerate(input_urls):
+                        img_label = f"#{img_idx + 1}"
+                        single_input_list = [single_img_url]
 
-                for img_idx, single_img_url in enumerate(input_urls):
-                    img_label = f"#{img_idx + 1}"
-                    single_input_list = [single_img_url]
+                        if "Nano Banana 2" in selected_models:
+                            tid, msg = kie_api.create_kie_task(
+                                api_key,
+                                {
+                                    "model": "nano-banana-2",
+                                    "callBackUrl": callback_url,
+                                    "input": {
+                                        "prompt": prompt,
+                                        "image_input": single_input_list,
+                                        "aspect_ratio": aspect_ratio,
+                                        "google_search": False,
+                                        "resolution": resolution,
+                                        "output_format": "png",
+                                    },
+                                },
+                            )
+                            if tid:
+                                tasks[tid] = {
+                                    "engine": f"Nano Banana 2 {img_label}",
+                                    "status": "pending",
+                                    "result_url": None,
+                                }
+                            else:
+                                st.warning(f"Nano Banana 2 {img_label} タスク作成失敗: {msg}")
 
-                    if "Nano Banana 2" in selected_models:
-                        tid, msg = kie_api.create_kie_task(api_key, {
-                            "model": "nano-banana-2",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "prompt": prompt,
-                                "image_input": single_input_list,
-                                "aspect_ratio": aspect_ratio,
-                                "google_search": False,
-                                "resolution": resolution,
-                                "output_format": "png"
+                        if "GPT Image 1.5" in selected_models:
+                            gpt_ar_mapping = {
+                                "16:9": "3:2",
+                                "9:16": "2:3",
+                                "1:1": "1:1",
+                                "4:3": "3:2",
+                                "3:4": "2:3",
                             }
-                        })
-                        if tid:
-                            tasks[tid] = {"engine": f"Nano Banana 2 {img_label}", "status": "pending", "result_url": None}
-                        else:
-                            st.warning(f"Nano Banana 2 {img_label} タスク作成失敗: {msg}")
+                            gpt_aspect = gpt_ar_mapping.get(aspect_ratio, "3:2")
+                            gpt_quality = "high" if resolution == "4K" else "medium"
+                            gpt_prompt = prompt[:1000] if len(prompt) > 1000 else prompt
 
-                    if "GPT Image 1.5" in selected_models:
-                        gpt_ar_mapping = {"16:9": "3:2", "9:16": "2:3", "1:1": "1:1", "4:3": "3:2", "3:4": "2:3"}
-                        gpt_aspect = gpt_ar_mapping.get(aspect_ratio, "3:2")
-                        gpt_quality = "high" if resolution == "4K" else "medium"
-                        gpt_prompt = prompt[:1000] if len(prompt) > 1000 else prompt
+                            tid, msg = kie_api.create_kie_task(
+                                api_key,
+                                {
+                                    "model": "gpt-image/1.5-image-to-image",
+                                    "callBackUrl": callback_url,
+                                    "input": {
+                                        "input_urls": single_input_list,
+                                        "prompt": gpt_prompt,
+                                        "aspect_ratio": gpt_aspect,
+                                        "quality": gpt_quality,
+                                    },
+                                },
+                            )
+                            if tid:
+                                tasks[tid] = {
+                                    "engine": f"GPT Image 1.5 {img_label}",
+                                    "status": "pending",
+                                    "result_url": None,
+                                }
+                            else:
+                                st.warning(f"GPT Image 1.5 {img_label} タスク作成失敗: {msg}")
 
-                        tid, msg = kie_api.create_kie_task(api_key, {
-                            "model": "gpt-image/1.5-image-to-image",
-                            "callBackUrl": callback_url,
-                            "input": {
-                                "input_urls": single_input_list,
-                                "prompt": gpt_prompt,
-                                "aspect_ratio": gpt_aspect,
-                                "quality": gpt_quality
-                            }
-                        })
-                        if tid:
-                            tasks[tid] = {"engine": f"GPT Image 1.5 {img_label}", "status": "pending", "result_url": None}
-                        else:
-                            st.warning(f"GPT Image 1.5 {img_label} タスク作成失敗: {msg}")
+                    if not tasks:
+                        st.stop()
 
-                if not tasks:
-                    st.stop()
+                    status_container.success(f"{len(tasks)}件のタスクを開始しました")
+                    st.toast(f"{len(tasks)}件のタスクを開始しました")
 
-                status_container.success(f"{len(tasks)}件のタスクを開始しました")
-                st.toast(f"{len(tasks)}件のタスクを開始しました")
+                    poll_loop(tasks, wh_uuid, prompt, col_result)
 
-                # 4. ポーリングループ (Webhook Polling)
-                poll_loop(tasks, wh_uuid, prompt, col_result)
-                    
-            except Exception as e:
-                st.error(f"システムエラー: {e}")
+                except Exception as e:
+                    st.error(f"システムエラー: {e}")
 
     elif run_button and not uploaded_files:
-        st.warning("画像をアップロードしてください。")
+        with col_result:
+            st.warning("画像をアップロードしてください。")
 
-    # --- Community Gallery ---
     st.markdown("---")
-    st.subheader("🌐 コミュニティギャラリー")
-    render_community_gallery()
+    with st.expander("🌐 コミュニティギャラリーを見る", expanded=False):
+        st.markdown(
+            '<div class="gallery-heading">直近の生成結果です。仕上がりの方向性やモデル差分の確認に使えます。</div>',
+            unsafe_allow_html=True,
+        )
+        render_community_gallery()
+
 
 def poll_loop(tasks, wh_uuid, prompt, container):
-    """Polling logic for tasks using Webhook."""
+    """Polling logic for tasks using webhook polling."""
     progress_bar = st.progress(0)
     gallery_placeholder = st.empty()
     poll_url = kie_api.get_poll_url(wh_uuid)
-    
+
     start_time = time.time()
     next_warning = 30
-    
+
     while True:
         elapsed = time.time() - start_time
-        
+
         if elapsed > 300:
             st.error("タイムアウトしました。混雑している可能性があります。")
             break
-        
+
         if elapsed > next_warning:
-             st.info(f"処理に時間がかかっています... ({int(elapsed)}秒経過)")
-             next_warning += 30
-            
+            st.info(f"処理に時間がかかっています... ({int(elapsed)}秒経過)")
+            next_warning += 30
+
         pending_tasks = [tid for tid, info in tasks.items() if info["status"] == "pending"]
         if not pending_tasks:
             progress_bar.progress(1.0)
             st.success("全タスク完了！")
             break
-        
-        # update UI
+
         progress_bar.progress(min(elapsed / 60, 0.95))
-        
-        # Fetch webhooks
+
         try:
             res = requests.get(poll_url, timeout=10)
             if res.status_code == 200:
@@ -216,7 +295,7 @@ def poll_loop(tasks, wh_uuid, prompt, container):
                             body = json.loads(content)
                             data_body = body.get("data", {})
                             rec_tid = data_body.get("taskId")
-                            
+
                             if rec_tid in tasks and tasks[rec_tid]["status"] == "pending":
                                 state = data_body.get("state")
                                 if state == "success":
@@ -224,9 +303,10 @@ def poll_loop(tasks, wh_uuid, prompt, container):
                                     if "resultUrls" in data_body and data_body["resultUrls"]:
                                         res_url = data_body["resultUrls"][0]
                                     elif "resultJson" in data_body:
-                                         rj = json.loads(data_body["resultJson"])
-                                         if "resultUrls" in rj: res_url = rj["resultUrls"][0]
-                                    
+                                        rj = json.loads(data_body["resultJson"])
+                                        if "resultUrls" in rj:
+                                            res_url = rj["resultUrls"][0]
+
                                     if res_url:
                                         tasks[rec_tid]["status"] = "success"
                                         tasks[rec_tid]["result_url"] = res_url
@@ -244,12 +324,12 @@ def poll_loop(tasks, wh_uuid, prompt, container):
                             print(f"Error parsing polling data: {e}")
         except Exception as e:
             print(f"Polling request error (retrying): {e}")
-        
-        # Render Gallery
+
         with gallery_placeholder.container():
             components.render_gallery_grid(list(tasks.values()))
-        
+
         time.sleep(3)
+
 
 def render_community_gallery():
     try:
@@ -257,11 +337,11 @@ def render_community_gallery():
             st.warning("DB未接続のためギャラリーは表示されません")
             return
 
-        recent_results = db.get_recent_results(limit=50)
+        recent_results = db.get_recent_results(limit=12)
         if recent_results:
-            cols = st.columns(4)
+            cols = st.columns(3, gap="large")
             for idx, record in enumerate(recent_results):
-                with cols[idx % 4]:
+                with cols[idx % 3]:
                     try:
                         url = record["image_url"]
                         if url and (url.endswith(".mp4") or url.endswith(".mov")):
@@ -276,6 +356,6 @@ def render_community_gallery():
                     except Exception:
                         pass
         else:
-            st.info("No records found.")
+            st.info("まだ保存された結果はありません。")
     except Exception as gallery_error:
         st.warning(f"ギャラリーの読み込みに失敗しました: {gallery_error}")

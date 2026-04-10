@@ -4,7 +4,12 @@ from ui import components
 from ui.tabs import tab1_ai_parse, tab2_video
 
 # --- Page Config ---
-st.set_page_config(page_title="ishitomo-home AI パース β版", layout="wide")
+st.set_page_config(
+    page_title="ishitomo-home AI パース β版",
+    page_icon="🏡",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 # --- Load Styles ---
 components.load_styles()
@@ -15,7 +20,7 @@ try:
         API_KEY = st.secrets["KIEAI_API_KEY"]
     else:
         API_KEY = None
-except:
+except Exception:
     API_KEY = None
 
 if not API_KEY:
