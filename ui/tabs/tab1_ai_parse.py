@@ -36,57 +36,30 @@ def render(api_key):
 建物の形状や寸法感が変わるような解釈は絶対にしないでください。
 元画像の輪郭線と構造はそのまま、質感だけを高精細フォトリアルに仕上げてください。"""
 
-    st.markdown(
-        """
-        <div class="panel-note">
-            <strong>X公開向けの見せ方に寄せたUIです</strong>
-            <span>
-                入力と結果を左右に分けて、ファーストビューだけで「何をすると」「何が返るか」が伝わる構成にしています。
-                初期プロンプトは、輪郭固定のまま質感だけを上げる用途に最適化しています。
-            </span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     col_input, col_result = st.columns([1.05, 0.95], gap="large")
 
     with col_input:
         with st.container(border=True):
-            st.markdown('<div class="section-kicker">01 / Input</div>', unsafe_allow_html=True)
-            st.markdown("### 元画像と条件をセット")
-            st.caption("最初の1枚だけでも開始できます。複数枚を入れると案の比較がしやすくなります。")
-
+            st.markdown("### 画像をアップロード")
             uploaded_files = st.file_uploader(
                 "下絵となる画像をアップロードしてください (複数可)",
                 type=["jpg", "png", "jpeg"],
                 accept_multiple_files=True,
             )
 
-            st.markdown(
-                """
-                <div class="panel-note">
-                    <strong>初期プロンプトの狙い</strong>
-                    <span>
-                        建物の形状・アングル・パースは固定しつつ、外壁・ガラス・道路・光の質感だけをフォトリアル側へ寄せる設定です。
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown("#### プロンプト")
+            st.markdown("### プロンプト")
             prompt = st.text_area(
-                "プロンプト (どのような建物にしたいか)",
+                "プロンプト",
                 value=default_prompt,
                 height=260,
+                label_visibility="collapsed",
             )
 
-            st.markdown("#### 出力設定")
+            st.markdown("### 設定")
             setting_col1, setting_col2 = st.columns(2, gap="medium")
             with setting_col1:
                 resolution = st.selectbox(
-                    "解像度 (Resolution)",
+                    "解像度",
                     ["1K", "2K", "4K"],
                     index=0,
                     help="Nano Banana 2 / GPT Image 1.5",
@@ -98,27 +71,17 @@ def render(api_key):
                     index=0,
                 )
 
-            model_options = ["Nano Banana 2", "GPT Image 1.5"]
             selected_models = st.multiselect(
-                "使用するモデル (複数選択可)",
-                model_options,
+                "モデル",
+                ["Nano Banana 2", "GPT Image 1.5"],
                 default=["Nano Banana 2", "GPT Image 1.5"],
             )
 
-            st.markdown(
-                f'<div class="muted-note">同時生成: {len(selected_models)} エンジン。比較しやすいので、基本は両方ONのままがおすすめです。</div>',
-                unsafe_allow_html=True,
-            )
-            run_button = st.button("パースを生成する", type="primary", use_container_width=True)
+            run_button = st.button("生成する", type="primary", use_container_width=True)
 
     with col_result:
         with st.container(border=True):
-            st.markdown('<div class="section-kicker">02 / Output</div>', unsafe_allow_html=True)
-            st.markdown("### 結果プレビュー")
-            st.markdown(
-                '<div class="gallery-heading">生成を開始すると、進行状況と各エンジンの結果がここに表示されます。Xに出す前の比較・選定までこの画面で完結します。</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown("### 結果")
             if not run_button:
                 components.render_result_placeholder()
 
@@ -130,8 +93,7 @@ def render(api_key):
 
         with col_result:
             with st.container(border=True):
-                st.markdown('<div class="section-kicker">02 / Output</div>', unsafe_allow_html=True)
-                st.markdown("### 結果プレビュー")
+                st.markdown("### 結果")
 
                 try:
                     input_urls = []
@@ -238,7 +200,7 @@ def render(api_key):
                     status_container.success(f"{len(tasks)}件のタスクを開始しました")
                     st.toast(f"{len(tasks)}件のタスクを開始しました")
 
-                    poll_loop(tasks, wh_uuid, prompt, col_result)
+                    poll_loop(tasks, wh_uuid, prompt)
 
                 except Exception as e:
                     st.error(f"システムエラー: {e}")
@@ -248,15 +210,11 @@ def render(api_key):
             st.warning("画像をアップロードしてください。")
 
     st.markdown("---")
-    with st.expander("🌐 コミュニティギャラリーを見る", expanded=False):
-        st.markdown(
-            '<div class="gallery-heading">直近の生成結果です。仕上がりの方向性やモデル差分の確認に使えます。</div>',
-            unsafe_allow_html=True,
-        )
+    with st.expander("ギャラリー", expanded=False):
         render_community_gallery()
 
 
-def poll_loop(tasks, wh_uuid, prompt, container):
+def poll_loop(tasks, wh_uuid, prompt):
     """Polling logic for tasks using webhook polling."""
     progress_bar = st.progress(0)
     gallery_placeholder = st.empty()
@@ -279,7 +237,7 @@ def poll_loop(tasks, wh_uuid, prompt, container):
         pending_tasks = [tid for tid, info in tasks.items() if info["status"] == "pending"]
         if not pending_tasks:
             progress_bar.progress(1.0)
-            st.success("全タスク完了！")
+            st.success("全タスク完了")
             break
 
         progress_bar.progress(min(elapsed / 60, 0.95))
@@ -312,7 +270,7 @@ def poll_loop(tasks, wh_uuid, prompt, container):
                                         tasks[rec_tid]["result_url"] = res_url
                                         tasks[rec_tid]["image_url"] = res_url
                                         tasks[rec_tid]["label"] = tasks[rec_tid]["engine"]
-                                        st.toast(f"{tasks[rec_tid]['engine']} 完了！")
+                                        st.toast(f"{tasks[rec_tid]['engine']} 完了")
                                         try:
                                             db.save_result(res_url, prompt, tasks[rec_tid]["engine"])
                                         except Exception as save_error:

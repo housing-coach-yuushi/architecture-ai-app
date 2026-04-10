@@ -1,11 +1,10 @@
 import streamlit as st
-import db
 from ui import components
-from ui.tabs import tab1_ai_parse, tab2_video
+from ui.tabs import tab1_ai_parse
 
 # --- Page Config ---
 st.set_page_config(
-    page_title="ishitomo-home AI パース β版",
+    page_title="AIパース生成",
     page_icon="🏡",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -31,11 +30,5 @@ if not API_KEY:
 # --- Header ---
 components.render_header()
 
-# --- Tabs ---
-tab1, tab2 = st.tabs(["🏠 AIパース生成", "🎥 動画生成"])
-
-with tab1:
-    tab1_ai_parse.render(API_KEY)
-
-with tab2:
-    tab2_video.render(API_KEY)
+# --- Main ---
+tab1_ai_parse.render(API_KEY)
