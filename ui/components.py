@@ -6,97 +6,106 @@ def load_styles():
     st.markdown(
         """
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&family=Noto+Serif+JP:wght@600;700&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
             :root {
-                --surface: rgba(255, 252, 247, 0.84);
-                --ink: #1f2933;
-                --muted: #6f6b64;
-                --line: rgba(128, 101, 73, 0.16);
-                --brand: #8f4c2b;
-                --brand-strong: #6d3116;
-                --brand-soft: #f7e7dd;
-                --shadow: 0 22px 60px rgba(53, 39, 26, 0.12);
+                --bg: #f3f6fb;
+                --bg-soft: #eef2f8;
+                --surface: rgba(255, 255, 255, 0.9);
+                --surface-strong: #ffffff;
+                --ink: #111827;
+                --muted: #5b6474;
+                --line: rgba(148, 163, 184, 0.28);
+                --line-strong: rgba(100, 116, 139, 0.24);
+                --accent: #0f172a;
+                --accent-soft: #e7edf6;
+                --accent-glow: rgba(15, 23, 42, 0.06);
+                --shadow: 0 18px 48px rgba(15, 23, 42, 0.06);
             }
 
             html, body, [class*="css"] {
-                font-family: 'Noto Sans JP', sans-serif;
+                font-family: 'Instrument Sans', sans-serif;
                 color: var(--ink);
             }
 
             .stApp {
                 background:
-                    radial-gradient(circle at top left, rgba(214, 229, 216, 0.45), transparent 34%),
-                    radial-gradient(circle at top right, rgba(247, 231, 221, 0.9), transparent 36%),
-                    linear-gradient(180deg, #f7f2ea 0%, #f2ede5 46%, #f9f6f1 100%);
+                    radial-gradient(circle at top left, rgba(191, 219, 254, 0.24), transparent 26%),
+                    radial-gradient(circle at top right, rgba(226, 232, 240, 0.72), transparent 32%),
+                    linear-gradient(180deg, #f8fafd 0%, var(--bg) 48%, #edf2f8 100%);
             }
 
             .main .block-container {
-                max-width: 1240px;
-                padding-top: 1.8rem;
+                max-width: 1280px;
+                padding-top: 1.25rem;
                 padding-bottom: 4rem;
-                padding-left: 1.4rem;
-                padding-right: 1.4rem;
+                padding-left: 1.2rem;
+                padding-right: 1.2rem;
             }
 
-            h1, h2, h3 {
+            h1, h2, h3, label, p, span, div {
                 letter-spacing: -0.02em;
             }
 
             div[data-testid="stHeadingWithActionElements"] h1,
             div[data-testid="stHeadingWithActionElements"] h2,
             div[data-testid="stHeadingWithActionElements"] h3 {
-                font-family: 'Noto Serif JP', serif;
+                font-family: 'Instrument Sans', sans-serif;
+                font-weight: 650;
             }
 
             div[data-testid="stVerticalBlockBorderWrapper"] {
                 background: var(--surface);
                 border: 1px solid var(--line);
-                border-radius: 28px;
+                border-radius: 24px;
                 box-shadow: var(--shadow);
+                backdrop-filter: blur(18px);
+                animation: surface-in 320ms ease-out;
             }
 
             div[data-testid="stFileUploader"] section {
-                background: rgba(255, 255, 255, 0.8);
-                border: 1.5px dashed rgba(143, 76, 43, 0.32);
-                border-radius: 22px;
-                padding: 1rem;
+                background: rgba(248, 250, 252, 0.92);
+                border: 1.5px dashed rgba(100, 116, 139, 0.34);
+                border-radius: 18px;
+                padding: 1.05rem;
+                transition: border-color 0.18s ease, background 0.18s ease;
             }
 
             div[data-testid="stTextArea"] textarea {
-                background: rgba(255, 255, 255, 0.84);
-                border-radius: 22px;
-                border: 1px solid rgba(143, 76, 43, 0.18);
+                background: rgba(248, 250, 252, 0.98);
+                border-radius: 18px;
+                border: 1px solid var(--line);
                 line-height: 1.7;
                 padding: 1rem 1.05rem;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
             }
 
             div[data-baseweb="select"] > div,
             div[data-testid="stTextInputRootElement"] > div,
             div[data-testid="stNumberInputContainer"] > div {
-                background: rgba(255, 255, 255, 0.84);
-                border-radius: 18px;
-                border-color: rgba(143, 76, 43, 0.18);
+                background: rgba(248, 250, 252, 0.98);
+                border-radius: 16px;
+                border-color: var(--line);
             }
 
             div[data-testid="stAlert"] {
-                border-radius: 20px;
-                border: 1px solid rgba(143, 76, 43, 0.12);
+                border-radius: 18px;
+                border: 1px solid var(--line);
             }
 
             .stButton > button {
-                border-radius: 999px;
-                padding: 0.75rem 1.4rem;
-                font-weight: 800;
-                border: none;
-                transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+                border-radius: 14px;
+                padding: 0.76rem 1.1rem;
+                font-weight: 650;
+                border: 1px solid transparent;
+                transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, background 0.16s ease;
             }
 
             .stButton > button[kind="primary"],
             .stButton > button[data-testid="baseButton-primary"] {
-                background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 100%);
-                color: #fffaf5;
-                box-shadow: 0 16px 34px rgba(109, 49, 22, 0.24);
+                background: linear-gradient(180deg, #1f2937 0%, #0f172a 100%);
+                color: #f8fafc;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
             }
 
             .stButton > button:hover {
@@ -104,16 +113,25 @@ def load_styles():
                 filter: brightness(1.02);
             }
 
+            .stButton > button[kind="secondary"],
+            .stButton > button[data-testid="baseButton-secondary"] {
+                background: rgba(248, 250, 252, 0.98);
+                border-color: var(--line);
+                color: var(--ink);
+            }
+
             .stMultiSelect [data-baseweb="tag"] {
-                background: var(--brand-soft);
+                background: var(--accent-soft);
                 border-radius: 999px;
-                border: 1px solid rgba(143, 76, 43, 0.18);
-                color: var(--brand-strong);
+                border: 1px solid rgba(148, 163, 184, 0.28);
+                color: var(--accent);
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 0.74rem;
             }
 
             details {
-                background: rgba(255, 255, 255, 0.72);
-                border: 1px solid rgba(143, 76, 43, 0.1);
+                background: rgba(255, 255, 255, 0.82);
+                border: 1px solid var(--line);
                 border-radius: 18px;
                 padding: 0.2rem 0.5rem;
             }
@@ -121,69 +139,124 @@ def load_styles():
             div[data-testid="stImage"] img,
             div[data-testid="stVideo"] video {
                 border-radius: 18px;
-                box-shadow: 0 16px 30px rgba(53, 39, 26, 0.14);
+                border: 1px solid rgba(148, 163, 184, 0.2);
+                box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
             }
 
-            .hero-shell {
+            .workspace-shell {
                 position: relative;
                 overflow: hidden;
-                border-radius: 36px;
-                padding: 2rem;
+                border-radius: 28px;
+                padding: 1.35rem 1.45rem 1.45rem;
                 background:
-                    linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(248, 242, 235, 0.88) 54%, rgba(220, 232, 223, 0.7) 100%);
-                border: 1px solid rgba(143, 76, 43, 0.14);
+                    radial-gradient(circle at top right, rgba(148, 163, 184, 0.12), transparent 28%),
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 249, 252, 0.9) 100%);
+                border: 1px solid var(--line);
                 box-shadow: var(--shadow);
+                animation: surface-in 380ms ease-out;
             }
 
-            .hero-title {
+            .workspace-kicker {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.55rem;
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 0.73rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #475569;
+            }
+
+            .workspace-kicker::before {
+                content: "";
+                width: 0.5rem;
+                height: 0.5rem;
+                border-radius: 999px;
+                background: #111827;
+                box-shadow: 0 0 0 6px rgba(15, 23, 42, 0.07);
+            }
+
+            .workspace-title {
                 margin: 0;
-                font-family: 'Noto Serif JP', serif;
-                font-size: clamp(2rem, 3.8vw, 3.4rem);
-                line-height: 1.08;
-                color: #241b14;
+                padding-top: 0.95rem;
+                font-size: clamp(1.9rem, 3.1vw, 2.9rem);
+                line-height: 1.04;
+                font-weight: 680;
+                color: #0f172a;
+                max-width: 11ch;
             }
 
-            .hero-copy {
-                max-width: 680px;
+            .workspace-copy {
+                max-width: 700px;
                 margin: 0.8rem 0 0 0;
-                color: #4f4a44;
-                font-size: 1rem;
+                color: var(--muted);
+                font-size: 0.98rem;
                 line-height: 1.8;
             }
 
-            .hero-meta {
+            .workspace-meta {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 0.7rem;
-                margin-top: 1rem;
+                gap: 0.65rem;
+                margin-top: 1.1rem;
             }
 
-            .hero-chip {
+            .workspace-chip {
                 display: inline-flex;
                 align-items: center;
-                padding: 0.5rem 0.85rem;
+                padding: 0.45rem 0.78rem;
                 border-radius: 999px;
-                background: rgba(255, 255, 255, 0.78);
-                border: 1px solid rgba(143, 76, 43, 0.12);
-                color: #5d5148;
-                font-size: 0.9rem;
-                font-weight: 700;
+                background: rgba(248, 250, 252, 0.95);
+                border: 1px solid var(--line);
+                color: #334155;
+                font-size: 0.78rem;
+                font-weight: 560;
+                font-family: 'IBM Plex Mono', monospace;
             }
 
             .panel-note {
-                color: #655b55;
+                color: var(--muted);
                 font-size: 0.92rem;
                 line-height: 1.7;
             }
 
+            .panel-heading {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                margin-bottom: 1rem;
+            }
+
+            .panel-kicker {
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #64748b;
+            }
+
+            .panel-title {
+                margin: 0;
+                font-size: 1.05rem;
+                font-weight: 650;
+                color: #0f172a;
+            }
+
+            .panel-copy {
+                margin: 0;
+                color: var(--muted);
+                font-size: 0.93rem;
+                line-height: 1.6;
+            }
+
             .result-placeholder {
-                border-radius: 24px;
-                padding: 1.2rem;
+                border-radius: 22px;
+                padding: 1.15rem;
                 min-height: 420px;
                 background:
-                    linear-gradient(180deg, rgba(255,255,255,0.6), rgba(252, 247, 242, 0.95)),
-                    radial-gradient(circle at top right, rgba(220, 232, 223, 0.6), transparent 42%);
-                border: 1px dashed rgba(143, 76, 43, 0.22);
+                    radial-gradient(circle at top right, rgba(148, 163, 184, 0.18), transparent 28%),
+                    linear-gradient(180deg, rgba(249, 250, 251, 0.95), rgba(241, 245, 249, 0.92));
+                border: 1px dashed rgba(148, 163, 184, 0.34);
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
@@ -194,39 +267,91 @@ def load_styles():
                 min-height: 250px;
                 border-radius: 20px;
                 background:
-                    linear-gradient(135deg, rgba(143, 76, 43, 0.1), rgba(220, 232, 223, 0.45)),
-                    linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0));
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(226, 232, 240, 0.45)),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0%, rgba(226, 232, 240, 0.12) 100%);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .result-placeholder-visual::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image:
+                    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+                background-size: 26px 26px;
+                mask-image: linear-gradient(180deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.08));
             }
 
             .result-placeholder-title {
-                font-family: 'Noto Serif JP', serif;
                 font-size: 1.2rem;
-                font-weight: 700;
-                color: #231914;
+                font-weight: 650;
+                color: #0f172a;
             }
 
             .result-placeholder-copy {
-                color: #625851;
+                color: var(--muted);
                 line-height: 1.8;
                 font-size: 0.95rem;
             }
 
+            .result-placeholder-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.55rem;
+                margin-top: 0.9rem;
+            }
+
+            .result-placeholder-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.42rem 0.68rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.72);
+                border: 1px solid rgba(148, 163, 184, 0.24);
+                color: #475569;
+                font-size: 0.74rem;
+                font-family: 'IBM Plex Mono', monospace;
+            }
+
             .result-label {
                 margin-top: 0.75rem;
-                color: #3a2d24;
-                font-weight: 800;
+                color: #0f172a;
+                font-weight: 650;
             }
 
             .gallery-heading {
-                color: #655b55;
+                color: var(--muted);
                 font-size: 0.92rem;
                 line-height: 1.7;
             }
 
+            hr {
+                border: none;
+                border-top: 1px solid rgba(148, 163, 184, 0.22);
+                margin: 1.25rem 0 0.9rem;
+            }
+
+            @keyframes surface-in {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
             @media (max-width: 900px) {
-                .hero-shell {
-                    padding: 1.45rem;
-                    border-radius: 28px;
+                .workspace-shell {
+                    padding: 1.2rem;
+                    border-radius: 24px;
+                }
+
+                .workspace-title {
+                    max-width: none;
                 }
 
                 .result-placeholder {
@@ -243,17 +368,34 @@ def render_header():
     """Render the main application header."""
     st.markdown(
         """
-        <section class="hero-shell">
-            <h1 class="hero-title">AIパース生成</h1>
-            <p class="hero-copy">
-                元画像の形状や構図を保ったまま、質感と光だけをフォトリアルに整えます。
+        <section class="workspace-shell">
+            <div class="workspace-kicker">Architecture AI Workspace</div>
+            <h1 class="workspace-title">建築パースを崩さずに、実写へ寄せる。</h1>
+            <p class="workspace-copy">
+                元画像の構図、形状、寸法感を保ちながら、質感と光だけを現実寄りに調整する
+                image-to-image ワークスペースです。
             </p>
-            <div class="hero-meta">
-                <div class="hero-chip">Image to Image</div>
-                <div class="hero-chip">Nano Banana 2</div>
-                <div class="hero-chip">GPT Image 1.5</div>
+            <div class="workspace-meta">
+                <div class="workspace-chip">image-to-image</div>
+                <div class="workspace-chip">nano-banana-2</div>
+                <div class="workspace-chip">gpt-image-2</div>
+                <div class="workspace-chip">local workflow</div>
             </div>
         </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_panel_header(kicker, title, copy):
+    """Render a small workspace-style panel header."""
+    st.markdown(
+        f"""
+        <div class="panel-heading">
+            <div class="panel-kicker">{kicker}</div>
+            <p class="panel-title">{title}</p>
+            <p class="panel-copy">{copy}</p>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -266,10 +408,16 @@ def render_result_placeholder():
         <div class="result-placeholder">
             <div class="result-placeholder-visual"></div>
             <div>
-                <div class="result-placeholder-title">結果</div>
+                <div class="result-placeholder-title">Result canvas</div>
                 <p class="result-placeholder-copy">
-                    生成を開始すると、ここに結果が表示されます。
+                    生成を開始すると、ここに各エンジンの出力が並びます。複数画像を入れた場合は、
+                    元画像ごとに結果が追加されます。
                 </p>
+                <div class="result-placeholder-meta">
+                    <div class="result-placeholder-pill">webhook polling</div>
+                    <div class="result-placeholder-pill">parallel engines</div>
+                    <div class="result-placeholder-pill">preview ready</div>
+                </div>
             </div>
         </div>
         """,

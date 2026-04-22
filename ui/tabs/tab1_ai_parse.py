@@ -40,14 +40,19 @@ def render(api_key):
 
     with col_input:
         with st.container(border=True):
-            st.markdown("### 画像をアップロード")
+            components.render_panel_header(
+                "Input",
+                "ソース画像と指示",
+                "元の建築パースをアップロードし、形状を維持したまま質感だけを寄せる指示を設定します。",
+            )
             uploaded_files = st.file_uploader(
                 "下絵となる画像をアップロードしてください (複数可)",
                 type=["jpg", "png", "jpeg"],
                 accept_multiple_files=True,
             )
+            st.caption("複数画像を同時投入できます。各画像に対して選択したエンジンが並列で走ります。")
 
-            st.markdown("### プロンプト")
+            st.markdown("### Prompt")
             prompt = st.text_area(
                 "プロンプト",
                 value=default_prompt,
@@ -55,14 +60,14 @@ def render(api_key):
                 label_visibility="collapsed",
             )
 
-            st.markdown("### 設定")
+            st.markdown("### Engines")
             setting_col1, setting_col2 = st.columns(2, gap="medium")
             with setting_col1:
                 resolution = st.selectbox(
                     "解像度",
                     ["1K", "2K", "4K"],
                     index=0,
-                    help="Nano Banana 2 / GPT Image 1.5",
+                    help="Nano Banana 2 / GPT 2",
                 )
             with setting_col2:
                 aspect_ratio = st.selectbox(
@@ -73,15 +78,19 @@ def render(api_key):
 
             selected_models = st.multiselect(
                 "モデル",
-                ["Nano Banana 2", "GPT Image 1.5"],
-                default=["Nano Banana 2", "GPT Image 1.5"],
+                ["Nano Banana 2", "GPT 2"],
+                default=["Nano Banana 2", "GPT 2"],
             )
 
             run_button = st.button("生成する", type="primary", use_container_width=True)
 
     with col_result:
         with st.container(border=True):
-            st.markdown("### 結果")
+            components.render_panel_header(
+                "Output",
+                "生成結果",
+                "実行前はプレースホルダー、実行後はエンジンごとの結果と進行状況をここに表示します。",
+            )
             if not run_button:
                 components.render_result_placeholder()
 
@@ -93,7 +102,11 @@ def render(api_key):
 
         with col_result:
             with st.container(border=True):
-                st.markdown("### 結果")
+                components.render_panel_header(
+                    "Output",
+                    "生成結果",
+                    "アップロード、タスク作成、完了通知の順で進みます。完了した画像から順番にここへ追加されます。",
+                )
 
                 try:
                     input_urls = []
@@ -160,39 +173,28 @@ def render(api_key):
                             else:
                                 st.warning(f"Nano Banana 2 {img_label} タスク作成失敗: {msg}")
 
-                        if "GPT Image 1.5" in selected_models:
-                            gpt_ar_mapping = {
-                                "16:9": "3:2",
-                                "9:16": "2:3",
-                                "1:1": "1:1",
-                                "4:3": "3:2",
-                                "3:4": "2:3",
-                            }
-                            gpt_aspect = gpt_ar_mapping.get(aspect_ratio, "3:2")
-                            gpt_quality = "high" if resolution == "4K" else "medium"
+                        if "GPT 2" in selected_models:
                             gpt_prompt = prompt[:1000] if len(prompt) > 1000 else prompt
 
                             tid, msg = kie_api.create_kie_task(
                                 api_key,
                                 {
-                                    "model": "gpt-image/1.5-image-to-image",
+                                    "model": "gpt-image-2-image-to-image",
                                     "callBackUrl": callback_url,
                                     "input": {
                                         "input_urls": single_input_list,
                                         "prompt": gpt_prompt,
-                                        "aspect_ratio": gpt_aspect,
-                                        "quality": gpt_quality,
                                     },
                                 },
                             )
                             if tid:
                                 tasks[tid] = {
-                                    "engine": f"GPT Image 1.5 {img_label}",
+                                    "engine": f"GPT 2 {img_label}",
                                     "status": "pending",
                                     "result_url": None,
                                 }
                             else:
-                                st.warning(f"GPT Image 1.5 {img_label} タスク作成失敗: {msg}")
+                                st.warning(f"GPT 2 {img_label} タスク作成失敗: {msg}")
 
                     if not tasks:
                         st.stop()
